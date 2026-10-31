@@ -4,7 +4,7 @@
 
 Build a low-maintenance historical archive of Citilink's public API. Save every response in a `.json` file. Preserve valid JSON response bytes exactly as retrieved, with separate acquisition metadata. Preserve unexpected non-JSON or incomplete responses losslessly inside JSON diagnostic records. Later analysis, prediction evaluation, reliability reports, and accessibility services can read the archive.
 
-This is a design, not an implemented or deployed service. Endpoint descriptions and sizes come from the uploaded project's reverse-engineered API documentation and samples. Live behavior and acceptable polling rates still need confirmation.
+This design has been implemented and deployed. See [DEPLOYMENT.md](DEPLOYMENT.md) for verified live collection, archive integrity, and monitoring results. Endpoint descriptions began with the uploaded project's reverse-engineered documentation; all five enabled feeds have now returned and archived valid live JSON. Acceptable expansion beyond the conservative polling plan still needs confirmation with the source operator.
 
 ## Small architecture
 
@@ -166,4 +166,4 @@ Maintenance should mainly be occasional dependency updates, spend checks, and in
 5. Simulate failed body/manifest writes, coordinator failure, and a stalled collector. Confirm health failure and delivered incident/recovery emails, including when the health endpoint is unreachable.
 6. Run a 24-hour conservative pilot, reconcile expected slots with manifests, inspect JSON responses, and measure traffic/storage/cost. Provide a short runbook for deploy/rollback, configuration edits, downloads, and incidents.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for current implementation and deployment evidence. Collection is active only after deployed schedules, R2 writes, meaningful health checks, and delivered test email are confirmed. Until then this remains a plan. Minute sampling cannot reconstruct every bus movement or prove actual arrivals; later prediction/reliability work must validate source semantics and schedule availability.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for current implementation and deployment evidence. Scheduled production collection and archive integrity have been verified. Monitor failure and recovery were tested through GitHub Actions; inbox delivery remains dependent on owner notification settings and has not been verified. A full 24-hour pilot is still pending. Minute sampling cannot reconstruct every bus movement or prove actual arrivals; later prediction/reliability work must validate source semantics and schedule availability.

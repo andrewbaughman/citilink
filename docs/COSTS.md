@@ -1,5 +1,7 @@
 # Monthly cost and ways to save
 
+**Current deployment:** Workers Free plus R2 Standard and a public-repository GitHub monitor. No paid plan was purchased. Initial usage is expected to fit free quotas; retained storage beyond allowances remains billable. The $5 Paid-plan budget below is an optional headroom scenario.
+
 ## Working budget
 
 For the default 3,480 upstream requests/day and approximately 6 GB of new JSON/month:
