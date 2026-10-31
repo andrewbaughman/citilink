@@ -11,6 +11,5 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Collector"] }],
   "r2_buckets": [{ "binding": "ARCHIVE", "bucket_name": "citilink-history" }],
-  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
-  "limits": { "cpu_ms": 10000 }
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
 }

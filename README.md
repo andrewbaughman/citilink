@@ -9,6 +9,14 @@ A small Cloudflare service that archives Fort Wayne Citilink's public API as ind
 - An authenticated dashboard, raw JSON downloads, configuration history, and a freshness-aware `/healthz` endpoint.
 - A `workers.dev` address with built-in dashboard authentication; **no custom domain required**.
 
+## Live service
+
+- [Collection health](https://citilink-history.empty-mouse-f437.workers.dev/healthz): minimal machine-readable health; no password required.
+- [Private archive dashboard](https://citilink-history.empty-mouse-f437.workers.dev/): HTTP Basic username `citilink`; password is the Worker's `STATUS_TOKEN` secret.
+- Cloudflare resources: Worker `citilink-history`, private R2 bucket `citilink-history`, and the SQLite coordinator.
+
+The Worker runs every minute on Workers Free. Live vehicle, detour, and topology JSON has been archived and checksum-verified. The initial five-minute feed cycles are being validated. A generated dashboard password is kept outside Git; see the [runbook](docs/RUNBOOK.md) for choosing your own in Cloudflare. All raw files remain private.
+
 ## Run locally
 
 Requires Node 24 or newer (CI uses Node 24).
@@ -76,12 +84,12 @@ The default is indefinite retention. No bucket-public-access setting or deletion
 
 A dedicated external uptime monitor should check the HTTPS `/healthz` endpoint and email on failure/recovery. Unlike the collector's dashboard, this does not depend on the Cloudflare management API. The default health response is public but contains no bus data or archive keys. An optional `HEALTH_TOKEN` restricts it with a separate bearer token.
 
-An independent **Collector health** GitHub Actions workflow is included as a fallback. It runs every **15 minutes**, only after the repository variable `COLLECTOR_URL` is set to the deployed origin. Set its optional `HEALTH_TOKEN` secret if used. Failure/recovery email delivery depends on the owner's GitHub Actions notification preferences and must be tested; the workflow alone does not prove email delivery. GitHub cron can be delayed, so this is not equivalent to a dedicated one-minute monitor. Public/private repository Actions quotas and charges differ. The fallback is dormant until its URL is configured.
+An independent **Collector health** GitHub Actions workflow is included as a fallback. It checks the deployed origin every **15 minutes**; the repository variable `COLLECTOR_URL` can optionally override the version-controlled default. Set its optional `HEALTH_TOKEN` secret if used. Failure/recovery email delivery depends on the owner's GitHub Actions notification preferences and must be tested; the workflow alone does not prove email delivery. GitHub cron can be delayed, so this is not equivalent to a dedicated one-minute monitor. Public/private repository Actions quotas and charges differ. The workflow now contains the deployed workers.dev origin as its default; a repository `COLLECTOR_URL` variable can override it. No repository-variable API permission is required.
 
 ## Cost and current limitations
 
-Plan for approximately **$5/month initially for Cloudflare**, assuming included account quotas are available, plus any paid monitoring. Uploaded samples project about **6 GB of new JSON/month**, approximately 148,000 R2 writes/month, and around **$1/month of storage at a year's retained volume**. [Detailed estimates and savings](docs/COSTS.md).
+The current deployment uses **Workers Free**, with no paid plan purchased. Initial usage is expected to fit Cloudflare's free quotas; R2 storage grows with retention. Workers Paid remains an optional $5/account/month upgrade for extra headroom. Uploaded samples project about **6 GB of new JSON/month**, approximately 148,000 R2 writes/month, and around **$1/month of storage at a year's retained volume**. [Detailed estimates and savings](docs/COSTS.md).
 
-The implementation is saved on GitHub and all 25 automated tests passed both locally and in GitHub CI. **Production deployment is waiting for R2 account activation:** Cloudflare accepted the configured credentials but rejected bucket provisioning with code 10042, "Please enable R2 through the Cloudflare Dashboard." Activate R2 under **Storage & databases > R2 > Overview**, then the deployment tooling can continue. Collection and email alerts are not running yet. See [deployment status](docs/DEPLOYMENT.md) for evidence and the exact prerequisite. No custom domain is required for the collector or dashboard.
+The implementation is saved on GitHub, all 25 automated tests passed, and the Worker/private bucket/minute schedule are deployed. R2 activation is complete. Live collection has started; validation of the five-minute datasets and the configured monitoring workflow is in progress. Notification delivery remains dependent on GitHub email settings and has not been confirmed in an inbox. See [deployment status](docs/DEPLOYMENT.md) for current evidence.
 
 The uploaded discovery material and browser examples are preserved in [api-discovery](api-discovery), [poc](poc), and [webapp](webapp). They are reference tools, not production collector dependencies. Original project notes are in [docs/reference-project.md](docs/reference-project.md). Uploaded cookies and Git metadata were deliberately excluded.

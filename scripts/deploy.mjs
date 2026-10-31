@@ -21,8 +21,17 @@ try {
   const result=spawnSync('node_modules/.bin/wrangler',['deploy','--secrets-file',secretPath],{stdio:'inherit',env:{...process.env,CI:'true',WRANGLER_SEND_METRICS:'false'}});
   if(result.error || result.status!==0)throw Error('Worker deployment failed. Existing R2 objects are preserved.');
  }finally{rmSync(temporary,{recursive:true,force:true});}
- const status=await publicFetch(deployment.url+'/api/status',{headers:{Authorization:'Bearer '+password}});
+ let status;
+ // Newly created workers.dev routes can briefly return 404 during propagation.
+ for(let attempt=0;attempt<6;attempt++){
+  status=await publicFetch(deployment.url+'/api/status',{headers:{Authorization:'Bearer '+password}});
+  if(status.status===200)break;
+  await status.body?.cancel();
+  if(![404,502,503].includes(status.status))break;
+  await new Promise(resolve=>setTimeout(resolve,2000));
+ }
  if(status.status!==200)throw Error('Deployed Worker did not pass authenticated status verification (HTTP '+status.status+').');
+ await status.body?.cancel();
  const health=await publicFetch(deployment.url+'/healthz',{headers:process.env.HEALTH_TOKEN?{Authorization:'Bearer '+process.env.HEALTH_TOKEN}:{}});
  if(![200,503].includes(health.status))throw Error('Health endpoint did not return its expected status.');
  const payload=await health.json();

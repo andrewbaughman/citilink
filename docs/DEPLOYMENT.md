@@ -1,30 +1,35 @@
 # Deployment status
 
-## Saved and verified on GitHub
+## Saved and deployed
 
-The complete implementation and supplied reference project are on [GitHub main](https://github.com/andrewbaughman/citilink/tree/main). Initial implementation commit: [`a41901b`](https://github.com/andrewbaughman/citilink/commit/a41901b69d1597b1ac84ebb77935c679eaa09177).
+The complete implementation is on [GitHub main](https://github.com/andrewbaughman/citilink/tree/main). All 25 automated tests passed, including a compiled-Worker integration test using actual local SQLite Durable Object/R2 bindings. GitHub CI also passed.
 
-All 25 automated tests passed (24 unit tests plus one compiled-Worker integration test), as did plan validation, type checking, and the production bundle. GitHub independently completed [Collector checks successfully](https://github.com/andrewbaughman/citilink/actions/runs/41249633978).
+Production resources created after R2 activation:
 
-The integration test uses actual local workerd, SQLite Durable Objects, and R2 bindings with mocked upstream data. It verifies unchanged JSON bytes, manifests, authenticated dashboard/downloads, and duplicate-tick prevention. Unit tests cover pacing, daily budgets, cooldowns, configuration changes, restarts, diagnostics, and archival failure recovery. These tests are not evidence of live production collection.
+- Worker: `citilink-history` on **Workers Free**.
+- Private R2 bucket: `citilink-history`, with no public access or deletion lifecycle enabled by the deployment tooling.
+- SQLite-backed coordinator: `Collector`, binding `COORDINATOR`.
+- Schedule: `* * * * *`.
+- Origin: https://citilink-history.empty-mouse-f437.workers.dev
+- Minimal health: https://citilink-history.empty-mouse-f437.workers.dev/healthz
+- Authenticated dashboard/downloads: https://citilink-history.empty-mouse-f437.workers.dev/
 
-## Current Cloudflare blocker
+No paid Workers plan was purchased. The unsupported custom CPU setting was removed so the Free plan enforces its own limits. Initial workers.dev propagation briefly returned 404; the site subsequently returned authenticated status successfully. The deployment verification script now tolerates brief propagation delays.
 
-The newly published execution environment has Cloudflare credentials and network access. `npm run provision` successfully reached the Cloudflare API but bucket provisioning was rejected with:
+## Live validation in progress
 
-```
-HTTP 403 — Cloudflare code 10042:
-Please enable R2 through the Cloudflare Dashboard.
-```
+Live scheduled runs have begun saving vehicle positions, topology updates, and a full topology snapshot. Downloaded JSON objects were parsed and verified against their recorded SHA-256 checksums. The live stop roster has 750 IDs; it is discovered rather than hard-coded from the uploaded sample's 751 stops.
 
-Cloudflare requires an R2 subscription to be activated through its dashboard checkout flow before the API can create buckets. This is an account prerequisite, separate from the collector's code or custom-domain setup. See [Cloudflare's official R2 prerequisites](https://developers.cloudflare.com/r2/get-started/).
+The slower message/version datasets are still completing their initial scheduled/recovery cycles. Collection is not declared fully healthy until all required datasets pass `/healthz`. A 24-hour pilot and delivered email are not yet verified.
 
-In the Cloudflare Dashboard, select **Storage & databases > R2 > Overview** and complete the R2 activation/checkout flow. R2 includes free monthly usage; metered usage beyond allowances may incur charges. No billing information was entered, subscription purchased, environment published, or Cloudflare resources created by the agent.
+## Monitoring
 
-Once activation is complete, the existing authenticated environment can run `npm run deploy` to provision the private bucket, Worker, SQLite coordinator, cron, and workers.dev address. It then checks authenticated status and health endpoints. No custom domain is required.
+The existing GitHub **Collector health** workflow is configured with this origin as its version-controlled default and runs every 15 minutes. A `COLLECTOR_URL` repository variable can override it, but is not required: this GitHub integration cannot edit repository variables. GitHub cron is best effort; its check interval is distinct from the collector's one-minute capture schedule.
 
-## Collection and notifications
+GitHub Actions notification email depends on the owner's notification preferences. Subscription/preferences could not be inspected through this connection, and inbox delivery has not been verified. The workflow can still record and expose failed health checks independently of Cloudflare's management API. No separate monitor subscription or email service was purchased.
 
-Production collection is not running yet. A live archive, scheduled observations, and notification delivery have not been verified.
+## Private dashboard access
 
-The GitHub health-monitor fallback remains dormant until repository variable `COLLECTOR_URL` is set to the deployed origin. Its schedule is every 15 minutes, with best-effort execution and email delivery controlled by the owner's GitHub notification preferences. A dedicated one-minute external monitor remains the recommended alert path. See [RUNBOOK.md](RUNBOOK.md).
+Username: `citilink`. The password is `STATUS_TOKEN`, generated during deployment and retained only in ignored owner-only `deployment.local.json`, not in source or logs. The account owner can choose a known password by editing `STATUS_TOKEN` under **Workers & Pages > citilink-history > Settings > Variables and Secrets**, then deploying that secret change. Use the same chosen value securely in future CLI/CI deployments to avoid an unintended password rotation. The minimal health endpoint needs no password. Raw archives can also be browsed through the authenticated Cloudflare R2 console.
+
+See [RUNBOOK.md](RUNBOOK.md) for configuration, incident handling, and private downloads. No custom domain is required.

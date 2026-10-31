@@ -7,7 +7,6 @@ permissions:
   contents: read
 jobs:
   health:
-    if: vars.COLLECTOR_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -17,5 +16,5 @@ jobs:
           node-version: '24'
       - run: node scripts/monitor.mjs
         env:
-          COLLECTOR_URL: ${{ vars.COLLECTOR_URL }}
+          COLLECTOR_URL: ${{ vars.COLLECTOR_URL || 'https://citilink-history.empty-mouse-f437.workers.dev' }}
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}

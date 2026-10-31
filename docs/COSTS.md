@@ -70,4 +70,8 @@ No compression, packaged files, database, or new collector service is needed for
 
 ## Implemented monitoring fallback
 
-The repository also includes an optional GitHub Actions monitor at a 15-minute cadence. It is disabled by an absent `COLLECTOR_URL` repository variable until deployment. GitHub-hosted cron is best effort, not a one-minute uptime service. Approximately 2,880 scheduled checks/month can consume runner minutes; private-repository Actions quotas/rates must be checked before enabling. Public-repository standard hosted runners may be free. GitHub email notification preferences and delivery must be tested. No external monitor subscription or billing plan has been purchased.
+The repository includes a GitHub Actions monitor at a 15-minute cadence, configured with the deployed origin as its default. `COLLECTOR_URL` can optionally override that origin. GitHub-hosted cron is best effort, not a one-minute uptime service. Approximately 2,880 scheduled checks/month can consume runner minutes; private-repository Actions quotas/rates must be checked before enabling. Public-repository standard hosted runners may be free. GitHub email notification preferences and delivery must be tested. No external monitor subscription or billing plan has been purchased.
+
+## Actual deployment choice
+
+The service was deployed on Workers Free after R2 activation. No paid Workers plan or external monitoring subscription was purchased. Initial usage is expected to remain within the account's free allowances; live representative full-topology archival has succeeded. A full-day quota/CPU pilot is still required. The $5 Paid budget above is a headroom option, not a charge incurred by this deployment. The repository is public, so the standard hosted GitHub monitoring/check jobs are expected to use public-repository free runner minutes. Retained R2 storage beyond included 10 GB-month remains billable.
