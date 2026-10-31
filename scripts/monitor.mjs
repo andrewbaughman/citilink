@@ -1,6 +1,10 @@
 // No Cloudflare management credentials: this runs independently of its API.
 const origin=process.env.COLLECTOR_URL;
-if(!origin){console.error('COLLECTOR_URL is not configured; monitoring is not active.');process.exitCode=1;}
+if(process.env.MONITOR_TEST_ALERT==='true'){
+ console.error('Intentional notification test: collection remains running. Run a normal health check afterward to test recovery notifications.');
+ process.exitCode=1;
+}
+else if(!origin){console.error('COLLECTOR_URL is not configured; monitoring is not active.');process.exitCode=1;}
 else {
  try {
   const url=new URL('/healthz',origin);

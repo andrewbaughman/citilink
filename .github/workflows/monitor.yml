@@ -1,8 +1,14 @@
 name: Collector health
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.test_alert && 'Collector notification test' || 'Collector health' }}
 on:
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Intentionally fail this check to test notifications; collection keeps running
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -18,3 +24,4 @@ jobs:
         env:
           COLLECTOR_URL: ${{ vars.COLLECTOR_URL || 'https://citilink-history.empty-mouse-f437.workers.dev' }}
           HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+          MONITOR_TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.test_alert }}
