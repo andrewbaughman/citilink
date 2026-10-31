@@ -15,7 +15,7 @@ A small Cloudflare service that archives Fort Wayne Citilink's public API as ind
 - [Private archive dashboard](https://citilink-history.empty-mouse-f437.workers.dev/): HTTP Basic username `citilink`; password is the Worker's `STATUS_TOKEN` secret.
 - Cloudflare resources: Worker `citilink-history`, private R2 bucket `citilink-history`, and the SQLite coordinator.
 
-The Worker runs every minute on Workers Free. Live vehicle, detour, and topology JSON has been archived and checksum-verified. The initial five-minute feed cycles are being validated. A generated dashboard password is kept outside Git; see the [runbook](docs/RUNBOOK.md) for choosing your own in Cloudflare. All raw files remain private.
+The Worker runs every minute on Workers Free. All five enabled datasets are healthy, and a live response from each has been downloaded and checksum-verified. The initial five-minute cycles completed successfully. A generated dashboard password is kept outside Git; see the [runbook](docs/RUNBOOK.md) for choosing your own in Cloudflare. All raw files remain private.
 
 ## Run locally
 
@@ -64,6 +64,14 @@ A local deployment generates a dashboard password when none is supplied and save
 
 The script distinguishes an accessible deployment from healthy collection: scheduled collection may still be warming up, and a new Cron Trigger can take up to 15 minutes to propagate. Confirm actual objects and successful dataset observations before calling it live. [Deployment/runbook](docs/RUNBOOK.md).
 
+## Verify the live archive
+
+```sh
+npm run verify:live
+```
+
+This requires the ignored `deployment.local.json` from deployment, or securely supplied `COLLECTOR_URL` and `STATUS_TOKEN` (plus `HEALTH_TOKEN` if configured). It checks live freshness, downloads one saved JSON response per enabled dataset through authenticated routes, and verifies its SHA-256. It does not trigger upstream collection. Raw objects are also accessible through the authenticated Cloudflare R2 console; workspace access is unnecessary.
+
 ## Storage
 
 Complete valid JSON responses are saved **unchanged** as `.json` files with `Content-Type: application/json`, regardless of the API's declared MIME type. Each attempt has its own object; repeated identical responses and JSON HTTP errors are preserved. Separate cycle manifests record actual fetch times, scheduled slots, status, checksum, coverage, errors, selected stops, and the capture-plan hash.
@@ -82,14 +90,14 @@ The default is indefinite retention. No bucket-public-access setting or deletion
 
 ## Monitoring and email
 
-A dedicated external uptime monitor should check the HTTPS `/healthz` endpoint and email on failure/recovery. Unlike the collector's dashboard, this does not depend on the Cloudflare management API. The default health response is public but contains no bus data or archive keys. An optional `HEALTH_TOKEN` restricts it with a separate bearer token.
+The configured GitHub monitor checks the HTTPS `/healthz` endpoint independently of Cloudflare every 15 minutes. A dedicated one-minute uptime monitor can be added later if faster detection is needed. Unlike the collector's dashboard, this does not depend on the Cloudflare management API. The default health response is public but contains no bus data or archive keys. An optional `HEALTH_TOKEN` restricts it with a separate bearer token.
 
-An independent **Collector health** GitHub Actions workflow is included as a fallback. It checks the deployed origin every **15 minutes**; the repository variable `COLLECTOR_URL` can optionally override the version-controlled default. Set its optional `HEALTH_TOKEN` secret if used. Failure/recovery email delivery depends on the owner's GitHub Actions notification preferences and must be tested; the workflow alone does not prove email delivery. GitHub cron can be delayed, so this is not equivalent to a dedicated one-minute monitor. Public/private repository Actions quotas and charges differ. The workflow now contains the deployed workers.dev origin as its default; a repository `COLLECTOR_URL` variable can override it. No repository-variable API permission is required.
+An independent **Collector health** GitHub Actions workflow is active. It checks the deployed origin every **15 minutes**; the repository variable `COLLECTOR_URL` can optionally override the version-controlled default. Set its optional `HEALTH_TOKEN` secret if used. Failure/recovery email delivery depends on the owner's GitHub Actions notification preferences and must be tested; the workflow alone does not prove email delivery. GitHub cron can be delayed, so this is not equivalent to a dedicated one-minute monitor. Public/private repository Actions quotas and charges differ. The workflow contains the deployed workers.dev origin as its default; a repository `COLLECTOR_URL` variable can override it. No repository-variable API permission is required. Its manual **test_alert** option intentionally fails one check without interrupting collection; run a normal check afterward to test recovery.
 
 ## Cost and current limitations
 
 The current deployment uses **Workers Free**, with no paid plan purchased. Initial usage is expected to fit Cloudflare's free quotas; R2 storage grows with retention. Workers Paid remains an optional $5/account/month upgrade for extra headroom. Uploaded samples project about **6 GB of new JSON/month**, approximately 148,000 R2 writes/month, and around **$1/month of storage at a year's retained volume**. [Detailed estimates and savings](docs/COSTS.md).
 
-The implementation is saved on GitHub, all 25 automated tests passed, and the Worker/private bucket/minute schedule are deployed. R2 activation is complete. Live collection has started; validation of the five-minute datasets and the configured monitoring workflow is in progress. Notification delivery remains dependent on GitHub email settings and has not been confirmed in an inbox. See [deployment status](docs/DEPLOYMENT.md) for current evidence.
+The implementation is saved on GitHub, all 25 automated tests passed, and the Worker/private bucket/minute schedule are deployed. R2 activation is complete. All five enabled datasets have passed live health and JSON/checksum validation. The GitHub monitor passed a real external health check, an intentional notification-test failure, and a subsequent normal recovery check. Notification email remains dependent on GitHub settings and has not been confirmed in an inbox. A full 24-hour pilot is still pending. See [deployment status](docs/DEPLOYMENT.md) for current evidence.
 
 The uploaded discovery material and browser examples are preserved in [api-discovery](api-discovery), [poc](poc), and [webapp](webapp). They are reference tools, not production collector dependencies. Original project notes are in [docs/reference-project.md](docs/reference-project.md). Uploaded cookies and Git metadata were deliberately excluded.

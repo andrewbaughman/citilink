@@ -18,7 +18,7 @@ Use a dedicated independent monitor with email notifications for `/healthz`. One
 
 A built-in GitHub fallback uses the deployed HTTPS origin already stored in its workflow. Optional repository variable `COLLECTOR_URL` overrides that default; optional secret `HEALTH_TOKEN` authenticates health checks when configured. **Collector health** then runs every 15 minutes. Enable owner email notifications for Actions failures and recoveries using GitHub notification settings; verify both deliveries, since preferences may suppress them. Scheduling is best effort and can be delayed or disabled by GitHub repository inactivity policies. Private-repository runner minutes may incur charges; do not assume this is free. The deployed origin is now the workflow's default; `COLLECTOR_URL` can override it without modifying code.
 
-For an acceptance test, simulate an interruption in a staging/local deployment or intentionally pause the production cron briefly, then restore it. Never stress the upstream API to test alerts. Confirm a failure email and a later recovery email from the selected monitor. No delivered notification means alerts are not verified.
+For a non-disruptive notification test, manually run **Collector health** with **test_alert** enabled, confirm the intentional failed run, then run it normally and confirm recovery. This does not pause collection or poll Citilink. A deeper acceptance test can simulate an interruption in staging or briefly pause/restore the production cron. Never stress the upstream API to test alerts. Confirm a failure email and a later recovery email from the selected monitor. No delivered notification means alerts are not verified.
 
 ## Normal operation
 
@@ -37,6 +37,10 @@ Monitor both recent archives and remaining budget, not just the last process inv
 5. Confirm the active plan hash and new next-due times. Old missed slots are not replayed. Runtime config is not editable through the public site.
 
 Some intervals are upper-bound estimates per UTC day because they do not divide 24 hours. Event-triggered full topology and retries consume the same daily headroom. A pending topology refresh is coalesced and waits out minimum spacing.
+
+## Verify the running service
+
+Run `npm run verify:live` from a checkout with ignored `deployment.local.json`, or securely supplied `COLLECTOR_URL` and `STATUS_TOKEN`. It requires healthy freshness, downloads one actual archived response per enabled dataset, parses JSON, and matches the saved SHA-256. Optional `HEALTH_TOKEN` is used for a protected health endpoint. Verification reads stored data and never triggers extra Citilink requests.
 
 ## Download and verify a response
 
