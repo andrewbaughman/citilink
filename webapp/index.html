@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Citilink Live Transit</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app">
+  <div id="map"></div>
+
+  <div id="sidebar">
+    <header>
+      <h1>Citilink Live Transit</h1>
+      <p class="subtitle">Live vehicle locations, next arrivals, and typical wait time for Fort Wayne Citilink.</p>
+    </header>
+
+    <div class="notice">
+      Start this app with <code>./start-server.sh</code>, then open
+      <code>http://127.0.0.1:8000</code>. Do not open this file directly.
+    </div>
+
+    <div id="load-status" class="load-status">Loading route/stop data…</div>
+
+    <section class="panel" id="routes-panel">
+      <h2>Routes</h2>
+      <p class="hint">Click a route, or click a bus on the map, to highlight it.</p>
+      <div id="routes-list" class="routes-list">Loading…</div>
+    </section>
+
+    <section class="panel" id="stop-panel">
+      <h2>My Stop</h2>
+      <input type="text" id="stop-search" placeholder="Search stops by name…" autocomplete="off" disabled />
+      <div id="stop-search-results" class="search-results"></div>
+      <button id="btn-use-location" disabled>Use my location</button>
+      <div id="nearby-stops" class="search-results"></div>
+      <div id="selected-stop-display" class="selected-stop"></div>
+    </section>
+
+    <section class="panel" id="arrivals-panel">
+      <h2>Next Arrivals</h2>
+      <div id="arrivals-result">Pick a stop above to see arrivals.</div>
+    </section>
+
+    <section class="panel" id="headway-panel">
+      <h2>Typical Wait Time</h2>
+      <button id="btn-headway" disabled>Calculate typical wait</button>
+      <div id="headway-result"></div>
+    </section>
+
+    <section class="panel" id="alerts-panel">
+      <h2>Service Alerts</h2>
+      <div id="alerts-result">Loading…</div>
+    </section>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

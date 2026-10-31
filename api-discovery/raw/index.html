@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+<!-- Pour IE 8 et anterieur -->
+<!--[if lt IE 9]&gt;
+        	&lt;script type="text/javascript"&gt;
+        		window.location.href="/error/navigateurNonSupporte.html";
+        	&lt;/script&gt;
+        	&lt;link rel="shortcut icon" href="CITILINK/resources/images/favicon/favicon.ico" /&gt;
+        &lt;![endif]-->
+<!-- Pour IE 10 et ulterieur + Windows 8 metro -->
+<title>Real-Time Vehicle Locations</title>
+<!-- Carte en plein ecran et non redimensionnable par l'utilisateur -->
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<meta name="msapplication-TileColor" content="#00c45b" />
+<meta name="msapplication-TileImage" content="CITILINK/resources/images/favicon/metro.png" />
+
+    <title>Real-Time Vehicle Locations</title>
+<!-- Basic favicon -->
+<link rel="icon" href="CITILINK/resources/images/favicon/favicon.ico" sizes="16x16 32x32 48x48" type="image/x-icon" />
+<!-- SVG favicon for modern browsers -->
+<link rel="icon" href="CITILINK/resources/images/favicon/navineo32x32.svg" type="image/svg+xml" />
+<!-- For iOS devices -->
+<link rel="apple-touch-icon" href="CITILINK/resources/images/favicon/apple-touch-icon.png" />
+
+
+
+<link rel="stylesheet" type="text/css" href="CITILINK/resources/css/leaflet.css?v=1.0" />
+<link rel="stylesheet" type="text/css" href="CITILINK/resources/css/bootstrap-datetimepicker.min.css?v=1.0" />
+<link rel="stylesheet" type="text/css" href="CITILINK/resources/css/bootstrap.min.css?v=1.0" />
+<link rel="stylesheet" type="text/css" href="CITILINK/resources/css/datatables.min.css?v=1.0" />
+<link rel="stylesheet" type="text/css" href="CITILINK/resources/css/style.css?v=1.0" />
+<script type="text/javascript" src="CITILINK/resources/scripts/datatables.min.js?v=1.0"></script>
+
+<script type="application/javascript" src="CITILINK/resources/scripts/scripts_topologie.min.js?v=1.0"></script>
+<script type="application/javascript" src="https://maps.google.com/maps/api/js?key=AIzaSyCJEiHlsv3DIPam0oenu1SZP3Oda077kFQ&amp;libraries=places"></script>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat" rel="stylesheet" />
+
+</head>
+
+<body>
+
+<div id="container">
+
+    <nav id="navbar" class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <div class="panel-group" id="menu">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">
+                            <span class="glyphicon glyphicon-road"></span>
+                            <a data-toggle="collapse" href="#collapseLignes" class="title-panel">Routes</a>
+
+                            <input type="checkbox" id="selectAllLignes" value="all"> </input>
+                            <label style="float: right;" class="toggle_switch" for="selectAllLignes">Toggle</label>
+                            <span style="float: right;">Select All</span>
+                        </h4>
+                    </div>
+                    <div id="collapseLignes" class="panel-collapse collapse in">
+                        <div class="panel-body fixed-panel">
+                            <table id="table_lignes" class="table table-striped table-bordered hover display compact" style="width:100%"></table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">
+                            <span class="glyphicon  glyphicon-map-marker"></span>
+                            <a data-toggle="collapse" data-parent="#menu" href="#collapseStops" class="title-panel">Stops</a>
+                        </h4>
+                    </div>
+                    <div id="collapseStops" class="panel-collapse collapse">
+                        <div class="panel-body fixed-panel">
+                            <table id="table_arrets" class="table table-striped table-bordered hover display compact" style="width:100%"></table>
+                        </div>
+                    </div>
+                </div>
+
+
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h4 class="panel-title">
+                <span class="glyphicon  glyphicon-chevron-right"></span>
+                <a data-toggle="collapse" data-parent="#menu" href="#collapseTripPlanner" class="title-panel">Trip Planner</a>
+            </h4>
+        </div>
+        <div id="collapseTripPlanner" class="panel-collapse collapse">
+            <div class="panel-body">
+                <form id="trip_planner_form" action="https://www.google.com/maps" method="get" target="_blank">
+                    <input type="hidden" name="f" value="d" />
+                    <input type="hidden" name="hl" value="en" />
+                    <input type="hidden" name="dirflg" value="r" />
+                    <input type="hidden" name="travelmode" value="transit" />
+                    <table class="form-section">
+                        <tbody>
+                        <tr>
+                            <td>
+                                <label for="saddr">From:</label>
+                            </td>
+                            <td>
+                                <input id="saddr" type="text" name="saddr" class="form-control" placeholder="Address, intersection..." />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <label for="daddr">To:</label>
+                            </td>
+                            <td>
+                                <input id="daddr" type="text" name="daddr" class="form-control" placeholder="Address, intersection..." />
+                            </td>
+                        </tr>
+                        <tr class="planner-when">
+                            <td>
+                                <label for="ttype" id="planner_when_type_label">Plan to:</label>
+                            </td>
+                            <td>
+                                <select id="ttype" name="ttype" data-role="combobox" aria-disabled="false" class="form-control">
+                                    <option value="dep" selected="selected">Depart</option>
+                                    <option value="arr">Arrive</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <label for="planner_when_time">Time:</label>
+                            </td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="input-group date" id="planner_when_time">
+                                        <input type="text" name="time" id="time" placeholder="Select time" class="form-control" />
+                                        <span class="input-group-addon">
+													<span class="glyphicon glyphicon-time"></span>
+												</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="planner_when_date">Date:</label></td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="input-group date" id="planner_when_date">
+                                        <input type="text" name="date" id="date" placeholder="Select Date" class="form-control" />
+                                        <span class="input-group-addon">
+													<span class="glyphicon glyphicon-calendar"></span>
+
+												</span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="submit-row">
+                            <td></td>
+                            <td>
+                                <input type="submit" name="transitsubmit" value="Plan Trip" class="plan-trip" />
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+
+        $(document).ready(function() {
+
+            $('#planner_when_date').datetimepicker({
+                format: 'MM/DD/YYYY',
+                minDate:new Date()
+            });
+
+            $('#planner_when_time').datetimepicker({
+                format: 'LT',
+            });
+
+            $( "#trip_planner_form" ).validate({
+                rules: {
+                    saddr:{
+                        required: true,
+                        minlength: 2
+                    },
+                    daddr:{
+                        required: true,
+                        minlength: 2
+                    }
+                },
+                messages: {
+                    saddr:{
+                        required: "This field is required.",
+                        minlength: "Please Enter at least 2 characters"
+                    },
+                    daddr:{
+                        required: "This field is required.",
+                        minlength: "Please Enter at least 2 characters"
+                    }
+                },
+                errorElement: "em",
+                errorPlacement: function ( error, element ) {
+                    // Add the `help-block` class to the error element
+                    error.addClass( "help-block" );
+                    error.insertAfter( element );
+                },
+                highlight: function ( element, errorClass, validClass ) {
+                    $( element ).parents( ".col-sm-5" ).addClass( "has-error" ).removeClass( "has-success" );
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $( element ).parents( ".col-sm-5" ).addClass( "has-success" ).removeClass( "has-error" );
+                },
+                submitHandler: function(form) {
+                    form.submit();
+                }
+            });
+
+            const center = { lat: 41.0873677596161, lng: -85.14822698915015 };
+           // Create a bounding box with sides ~50km away from the center point
+            const defaultBounds = {
+                north: center.lat + 0.5,
+                south: center.lat - 0.5,
+                east: center.lng + 0.5,
+                west: center.lng - 0.5,
+            };
+            //Places Autocomplete
+            var autocompleteOptions= {
+                bounds: defaultBounds,
+                componentRestrictions: { country: ["us"] },
+                fields: [ "formatted_address"],
+                strictBounds: true,
+            };
+            var saddrField=document.querySelector("#saddr");
+            var daddrField=document.querySelector("#daddr");
+            var saddrAutocomplete = new google.maps.places.Autocomplete(saddrField,autocompleteOptions);
+            saddrAutocomplete.addListener("place_changed", fillSaddrField);
+            var daddrAutocomplete = new google.maps.places.Autocomplete(daddrField,autocompleteOptions);
+            daddrAutocomplete.addListener("place_changed", fillDaddrField);
+
+            function fillSaddrField() {
+                saddrField.value=saddrAutocomplete.getPlace().formatted_address;
+            }
+
+            function fillDaddrField() {
+                daddrField.value=daddrAutocomplete.getPlace().formatted_address;
+            }
+        });
+    </script>
+
+                <div class="panel panel-default" style="margin-top: 5px">
+                    <div class="panel-heading">
+                        <h4 class="panel-title  title-panel">
+                            <span class="glyphicon  glyphicon-envelope"></span>
+                            <a data-toggle="collapse" href="#collapseAnnouncements" class="title-panel">Public Service Messages</a>
+                        </h4>
+                    </div>
+                    <div id="collapseAnnouncements" class="panel-collapse collapse in">
+                        <div class="panel-body fixed-panel">
+                            <table id="table_announcements" class="table table-striped table-bordered display compact" style="width:100%"></table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    </nav>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            createDatatables('0');
+            createActionMenus();
+        });
+    </script>
+
+	<div id="map"></div>
+
+</div>
+
+    <script type="text/javascript">
+        Object.freeze = Object.freeze || function (x) { return x; };
+
+        const urls = Object.freeze({
+            serveur : "CITILINK/proxy/restWS",
+            geoserver : "CITILINK/proxy/geoserver",
+            resources : "CITILINK/resources"
+        });
+        const popups = Object.freeze({
+            max : 5,
+            incrementOk : function() {
+                return (this.max > $('.infoLigne').length - 1);
+            }
+        });
+        const couleur = Object.freeze({
+            tronconCommun : "#804000",
+            deviation : "#FFFF00",
+            arret : {
+                normal : "#FFFFFF",
+                provisoire : "#FFFF00",
+                devie : "#000000",
+                // valeur vide en connaissance de cause (cf utils.js)
+                pad : ""
+            }
+        });
+        const traduction = Object.freeze({
+            touteLigne : "Toute ligne",
+            localiserArret : "Localiser un arrêt",
+            prochainArret : "Prochain arrêt",
+            avanceRetard : "Avance/Retard",
+            nbMaxPassagers : "Charge max",
+            via : "via",
+            zoomIn : "Zoom avant",
+            zoomOut : "Zoom arrière"
+        });
+        const timer = Object.freeze({
+            vehicule : 10,
+            horaire : 10,
+            topo : 15,
+            version : 60,
+        });
+
+        var gMap;
+        var lignes = {}, idLignes = [];
+        var idLignesSelected = [];
+        var troncons = [];
+        var arrets = {}, idPtas = [];
+        var arretsPunaises = [];
+        var vehicules = {}, idVehicules = [];
+        var lignesDatatables=[];
+        var codeModule='CITILINK';
+
+
+        var table_announcements;
+        var table_lignes;
+
+        var display_sidebar=true;
+        var display_route=true;
+
+
+        function createMap(center) {
+
+            var optionsLayer = {};
+            var options = {
+                preferCanvas: true,
+                center : center,
+                closePopupOnClick : false,
+            
+                    zoom : 10,
+                    layers : L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', L.Util.extend(optionsLayer, {
+                    minZoom : 2,
+                    maxZoom : 19,
+                    attribution : '<a target="_blank" rel="noreferrer" href="https://www.openstreetmap.org">© OpenStreetMap</a>'
+                })),
+                
+            limitationDeplacement : true,
+                // On désactive l'attribution/zoom par défaut (pour la gestion des traductions)
+                attributionControl : false,
+                zoomControl : false,
+                // Plugin(s)
+                almostOver: true,
+                almostHover: false
+        };
+
+            var mapResult = L.map('map', options);
+
+            // Gestion des traductions
+            // - zoom
+            mapResult.addControl(L.control.zoom({
+                zoomInTitle: traduction.zoomIn,
+                zoomOutTitle: traduction.zoomOut
+            }));
+            // - tooltip du lien Leaflet
+            mapResult.addControl(L.control.attribution({
+                prefix: '<a href="http://leafletjs.com">Leaflet</a>'
+            }));
+
+            return mapResult;
+        }
+
+        $( window ).load( preload([
+            urls.resources + '/images/update.png',
+            urls.resources + '/images/update_gris.png',
+            urls.resources + '/images/fleche_precedent_gris.png',
+            urls.resources + '/images/fleche_precedent.png',
+            urls.resources + '/images/fleche_suivant_gris.png',
+            urls.resources + '/images/fleche_suivant.png'
+        ]) );
+
+        $(document).ready(function() {
+             // creation de la carte (centrage sur les coordonnées Lat Long obtenues à partir des params XCentre et YCentre)
+            gMap = createMap(L.latLng(41.0873677596161, -85.14822698915015));
+        });
+
+    </script>
+
+
+<script type="text/javascript">
+  var selectAllRouteActive=true;
+  console.log('selectAllRouteActive : ' +selectAllRouteActive );
+  var swivAffichageTheorique=true;
+  console.log('swivAffichageTheorique : ' +swivAffichageTheorique );
+  if(selectAllRouteActive) $("#selectAllLignes").prop("checked", true);
+
+	$(document).ready(function() {
+		intialisationSWIV(urls.serveur);
+
+	});
+
+	function goBack() {
+		window.history.back();
+	}
+
+</script>
+
+
+
+</body>
+        <!-- Google Analytics -->
+        <script>
+            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+                m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+            })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+            ga('create', 'http://geoserver:8080/geoserver/Navineo/wms?', 'auto');
+            ga('send', 'pageview');
+        </script>
+        <!-- End Google Analytics -->
+
+    <noscript>
+        <img src="CITILINK/resources/images/JavaScript-logo.png" align="middle" alt="Javascript doit être activé" />
+    </noscript>
+</html>

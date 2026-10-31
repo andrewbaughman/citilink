@@ -1,0 +1,198 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  color: #1a1a1a;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+#map {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+#sidebar {
+  width: 380px;
+  flex: 0 0 380px;
+  height: 100%;
+  overflow-y: auto;
+  background: #fafafa;
+  border-left: 1px solid #ddd;
+  padding: 16px;
+}
+
+header h1 { font-size: 1.2rem; margin: 0 0 4px 0; }
+.subtitle { color: #666; font-size: 0.82rem; margin: 0 0 12px 0; }
+
+.notice {
+  background: #fff3cd;
+  border: 1px solid #ffe69c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+}
+.notice code { background: #f5efe0; padding: 1px 4px; border-radius: 3px; }
+
+.load-status {
+  font-size: 0.82rem;
+  color: #856404;
+  margin-bottom: 12px;
+}
+.load-status.ready { color: #2e7d32; }
+.load-status.error { color: #b00020; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.panel h2 { font-size: 0.95rem; margin: 0 0 8px 0; }
+
+input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 0.85rem;
+}
+
+button {
+  background: #1b89ca;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 8px;
+}
+button:hover:not(:disabled) { background: #146a9c; }
+button:disabled { background: #b7c6cf; cursor: not-allowed; }
+
+.search-results {
+  margin-top: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.search-result-item {
+  padding: 5px 6px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+}
+.search-result-item:hover { background: #eef6fb; }
+.search-result-item .dist { color: #888; font-size: 0.75rem; margin-left: 6px; }
+
+.selected-stop {
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+.selected-stop .stop-name { font-weight: bold; }
+
+.result, .summary { font-size: 0.85rem; }
+.error { color: #b00020; }
+
+ul { margin: 4px 0; padding-left: 20px; }
+
+.horaire-entry { border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; }
+.horaire-entry:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+.line-id { font-weight: bold; margin: 0 0 4px 0; font-size: 0.85rem; }
+.destination-block { margin-bottom: 8px; }
+.horaire-table { font-size: 0.8rem; width: 100%; }
+.horaire-table td { padding: 2px 6px 2px 0; }
+.nav-flags { color: #888; font-size: 0.75rem; }
+
+.badge {
+  color: #fff;
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-right: 4px;
+  display: inline-block;
+}
+
+.importance {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #b00020;
+  margin-right: 6px;
+}
+
+.alerts-list li { margin-bottom: 6px; font-size: 0.85rem; }
+.alerts-list li.pinned { background: #fff3cd; border-radius: 5px; padding: 4px 6px; list-style: none; margin-left: -20px; }
+
+.headway-summary {
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 8px 0 4px 0;
+}
+.headway-note {
+  font-size: 0.75rem;
+  color: #888;
+}
+.headway-breakdown { font-size: 0.82rem; margin-top: 6px; }
+.headway-breakdown li { margin-bottom: 3px; }
+
+.vehicle-rect {
+  border-radius: 2px;
+  border: 1px solid #222;
+  box-shadow: 0 0 2px rgba(0,0,0,0.6);
+}
+.vehicle-rect.serves-my-stop {
+  border: 2px solid #ffeb3b;
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: #888;
+  margin: 0 0 6px 0;
+}
+.routes-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+.route-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.route-item:hover { background: #eef6fb; }
+.route-item.active { background: #dceefb; font-weight: bold; }
+.route-label { flex: 1; }
+.route-count {
+  font-size: 0.72rem;
+  color: #555;
+  background: #eee;
+  border-radius: 10px;
+  padding: 1px 7px;
+  min-width: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.route-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.2);
+}
+
+.stop-marker-selected {
+  filter: drop-shadow(0 0 3px #1b89ca);
+}

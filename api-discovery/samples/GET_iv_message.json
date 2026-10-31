@@ -1,0 +1,56 @@
+[
+  {
+    "ligne": [
+      {
+        "nomCommercial": "7-Anthony",
+        "libCommercial": "Anthony",
+        "mnemo": "7ANT",
+        "couleur": "#1b89ca",
+        "itineraire": [],
+        "messageIVExiste": null,
+        "idLigne": 13756
+      }
+    ],
+    "message": "Route 7ANT diverted. Stops: McKee, Eckert, Oxford, will not be served.",
+    "libelleCE": "CITILINK",
+    "importanceMessage": "Importante"
+  },
+  {
+    "ligne": [
+      {
+        "nomCommercial": "4-Parkview",
+        "libCommercial": "Parkview",
+        "mnemo": "4P",
+        "couleur": "#f2581d",
+        "itineraire": [],
+        "messageIVExiste": null,
+        "idLigne": 13744
+      }
+    ],
+    "message": "Route 4P diverted. Stop Broyles W corner will not be served.",
+    "libelleCE": "CITILINK",
+    "importanceMessage": "Importante"
+  },
+  {
+    "ligne": [
+      {
+        "nomCommercial": "7-Anthony",
+        "libCommercial": "Anthony",
+        "mnemo": "7ANT",
+        "couleur": "#1b89ca",
+        "itineraire": [],
+        "messageIVExiste": null,
+        "idLigne": 13756
+      }
+    ],
+    "message": "Route 7ANT diverted. Stops: Colerick, Lillie, Pontiac, Smith, Hanna, will not be served.",
+    "libelleCE": "CITILINK",
+    "importanceMessage": "Importante"
+  },
+  {
+    "ligne": [],
+    "message": "",
+    "libelleCE": "CITILINK",
+    "importanceMessage": "Normale"
+  }
+]

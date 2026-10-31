@@ -1,0 +1,607 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SWIV Citilink Real-Time Vehicle Locations API",
+    "description": "Reverse-engineered specification for the public REST backend of Citilink's (Fort Wayne, IN transit) real-time bus tracking web app, built on the Navineo/SWIV AVL (Automatic Vehicle Location) platform by CADAVL. All resources were discovered by capturing the live requests issued by the app's front-end JavaScript (`resources/scripts/scripts_topologie.min.js`) against `https://swiv.citilink.cadavl.com/SWIV/CITILINK/`.\n\nNo authentication was required for any endpoint during discovery (no cookie, referer, or API key needed) — this appears to be an intentionally public, read-only data feed powering the embedded transit map. The backend is a Java JAX-RS service (internally mounted at `/jaxrs/SwivWS/`) fronted by a proxy at `/SWIV/CITILINK/proxy/restWS/`.\n\nAll responses are served with `Content-Type: application/octet-stream` even though the bodies are JSON — API consumers must parse the body as JSON regardless of the declared content type.\n\nOut of scope: `CITILINK/proxy/geoserver` is referenced in the page's HTML config (`urls.geoserver`) but is never actually called by the front-end JS in the captured session — it appears to be a vestigial WMS map-tile endpoint from the shared Navineo template, not part of the live restWS data API.",
+    "version": "1.0.0-reverse-engineered",
+    "contact": {
+      "name": "Discovery notes",
+      "url": "https://swiv.citilink.cadavl.com/SWIV/CITILINK"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://swiv.citilink.cadavl.com/SWIV/CITILINK/proxy/restWS",
+      "description": "Citilink (Fort Wayne, IN) production SWIV instance"
+    }
+  ],
+  "tags": [
+    { "name": "topology", "description": "Static and near-static route/stop/deviation network data" },
+    { "name": "vehicles", "description": "Live vehicle positions" },
+    { "name": "schedules", "description": "Per-stop and per-line arrival predictions/schedules" },
+    { "name": "messages", "description": "Rider-facing service alerts/announcements" },
+    { "name": "config", "description": "Client version/config polling" }
+  ],
+  "paths": {
+    "/topo": {
+      "get": {
+        "tags": ["topology"],
+        "summary": "Get full route/stop/deviation topology",
+        "description": "Returns the complete topology for the transit center(s) configured for this SWIV instance: all lines (with full itinerary geometry), all stops, and all currently active route deviations. This is the initial full-state load called once on page init (`intialisationSWIV`); subsequent updates are fetched incrementally via `/topo/refresh`. The response can be large (multi-MB) since itinerary geometry is fully denormalized per line.",
+        "operationId": "getTopo",
+        "parameters": [
+          { "$ref": "#/components/parameters/CacheBuster" },
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Topology snapshot, one entry per transit center (\"CE\" = Centre d'Exploitation) configured on this SWIV instance. Citilink only has a single CE (\"CITILINK\").",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TopoResponse" },
+                "examples": {
+                  "truncated-live-sample": {
+                    "summary": "Truncated live sample (full response ~2MB) — see samples/GET_topo.json",
+                    "externalValue": "samples/GET_topo.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topo/refresh": {
+      "get": {
+        "tags": ["topology"],
+        "summary": "Get incremental topology changes",
+        "description": "Polled every `timer.topo` seconds (observed default: 15s) after the initial `/topo` load. Returns only what has changed: active line deviations (as references to already-known `idTroncon` segment IDs rather than full geometry), any newly-added stops/segments not present in the original `/topo` response (under `objetsSuppl`), and updated per-stop route-color associations.",
+        "operationId": "getTopoRefresh",
+        "parameters": [
+          { "$ref": "#/components/parameters/CacheBuster" },
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incremental topology update, one entry per transit center.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TopoRefreshResponse" },
+                "examples": {
+                  "truncated-live-sample": {
+                    "summary": "Truncated live sample — see samples/GET_topo_refresh.json",
+                    "externalValue": "samples/GET_topo_refresh.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/topo/vehicules": {
+      "get": {
+        "tags": ["vehicles"],
+        "summary": "Get live vehicle positions",
+        "description": "Polled every `timer.vehicule` seconds (observed default: 10s). Returns the current position and trip state for every active vehicle, optionally filtered to a set of lines.",
+        "operationId": "getVehicules",
+        "parameters": [
+          { "$ref": "#/components/parameters/CacheBuster" },
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current vehicle fleet snapshot.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VehiculesResponse" },
+                "examples": {
+                  "live-sample": {
+                    "summary": "Live sample — see samples/GET_topo_vehicules.json",
+                    "externalValue": "samples/GET_topo_vehicules.json"
+                  },
+                  "filtered-by-line": {
+                    "summary": "Filtered to a single line via lignes= param — see samples/GET_topo_vehicules_lignesFilter.json",
+                    "externalValue": "samples/GET_topo_vehicules_lignesFilter.json"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error — observed when the `lignes` parameter is malformed (e.g. not base64, or not in `libelleCE:mnemo` form).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "malformed-lignes-param": {
+                    "summary": "See samples/ERROR_500_malformed_lignes_param.json",
+                    "externalValue": "samples/ERROR_500_malformed_lignes_param.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/version": {
+      "get": {
+        "tags": ["config"],
+        "summary": "Get current server data version",
+        "description": "Polled every `timer.version` seconds (observed default: 60s) to detect when the server-side topology/config has changed. When the client's cached value of `valeur` for a given `libelleCE` no longer matches the server's, the front-end forces a full page reload to pick up new topology.",
+        "operationId": "getVersion",
+        "parameters": [
+          { "$ref": "#/components/parameters/CacheBuster" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version marker per transit center.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VersionResponse" },
+                "examples": {
+                  "live-sample": {
+                    "summary": "Live sample — see samples/GET_config_version.json",
+                    "externalValue": "samples/GET_config_version.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/iv/message": {
+      "get": {
+        "tags": ["messages"],
+        "summary": "Get rider service alerts / announcements",
+        "description": "\"iv\" = \"info voyageur\" (traveler information). Returns active rider-facing service messages (detours, stop closures, etc.), each optionally associated with one or more lines. Rendered in the app's \"Public Service Messages\" panel.",
+        "operationId": "getServiceMessages",
+        "parameters": [
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of active service messages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ServiceMessage" }
+                },
+                "examples": {
+                  "live-sample": {
+                    "summary": "Live sample — see samples/GET_iv_message.json",
+                    "externalValue": "samples/GET_iv_message.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/horaires/pta/{idPointArret}": {
+      "get": {
+        "tags": ["schedules"],
+        "summary": "Get upcoming arrivals for a stop",
+        "description": "\"pta\" = \"point d'arrêt\" (stop). Returns, for the given stop, the next scheduled/predicted arrival(s) per line/destination serving it. Powers the popup shown when a stop marker is clicked, and is repolled every `timer.horaire` seconds (observed default: 10s) while that popup stays open. Each returned `destination.horaires[].idHoraire` is later used as the `idHoraire` path parameter to `/horaires/horaire/{idPointArret}/{idHoraire}/{direction}` to page forward/backward through additional departures for that destination.",
+        "operationId": "getStopArrivals",
+        "parameters": [
+          {
+            "name": "idPointArret",
+            "in": "path",
+            "required": true,
+            "description": "Numeric stop ID, matching `pointArret[].idPointArret` from the `/topo` response.",
+            "schema": { "type": "integer" },
+            "example": 273438
+          },
+          { "$ref": "#/components/parameters/CacheBuster" },
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of scheduled/predicted departures grouped by line and destination. Returns `{\"listeHoraires\": []}` for a stop ID with no upcoming service (including unknown/non-existent stop IDs — this endpoint does not 404 on an unrecognized numeric ID).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HorairesPtaResponse" },
+                "examples": {
+                  "live-sample": {
+                    "summary": "Live sample — see samples/GET_horaires_pta_by_idPointArret.json",
+                    "externalValue": "samples/GET_horaires_pta_by_idPointArret.json"
+                  },
+                  "unknown-or-no-service": {
+                    "summary": "Stop with no upcoming departures — see samples/GET_horaires_pta_unknown_stop_empty_result.json",
+                    "externalValue": "samples/GET_horaires_pta_unknown_stop_empty_result.json"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Returned when `idPointArret` is not a valid integer (path fails to route in the backend).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "non-numeric-id": {
+                    "summary": "See samples/ERROR_404_invalid_id_format.json",
+                    "externalValue": "samples/ERROR_404_invalid_id_format.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/horaires/horaire/{idPointArret}/{idHoraire}/{direction}": {
+      "get": {
+        "tags": ["schedules"],
+        "summary": "Page forward/backward through a stop's departures for one destination",
+        "description": "Used by the stop popup's prev/next (◀/▶) arrows to fetch the schedule entry adjacent to `idHoraire` for the given stop, in the given direction. `idHoraire` comes from a `horaires[].idHoraire` value previously returned by `/horaires/pta/{idPointArret}` (or by a prior call to this same endpoint). Response shape mirrors a single element of `listeHoraires` from the `pta` endpoint (i.e. one destination object), not the full `listeHoraires` wrapper.",
+        "operationId": "getStopArrivalNavigation",
+        "parameters": [
+          {
+            "name": "idPointArret",
+            "in": "path",
+            "required": true,
+            "description": "Numeric stop ID.",
+            "schema": { "type": "integer" },
+            "example": 273438
+          },
+          {
+            "name": "idHoraire",
+            "in": "path",
+            "required": true,
+            "description": "The schedule entry ID (`horaires[].idHoraire`) to navigate relative to.",
+            "schema": { "type": "integer" },
+            "example": 6711733
+          },
+          {
+            "name": "direction",
+            "in": "path",
+            "required": true,
+            "description": "Navigation direction. \"SUIVANT\" = next/following departure, \"PRECEDENT\" = previous departure.",
+            "schema": { "type": "string", "enum": ["SUIVANT", "PRECEDENT"] },
+            "example": "SUIVANT"
+          },
+          { "$ref": "#/components/parameters/CacheBuster" },
+          { "$ref": "#/components/parameters/LignesFilter" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single destination/schedule object for the requested navigation step.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HoraireDestination" },
+                "examples": {
+                  "live-sample": {
+                    "summary": "Live sample — see samples/GET_horaires_horaire_navigation.json",
+                    "externalValue": "samples/GET_horaires_horaire_navigation.json"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "CacheBuster": {
+        "name": "_tmp",
+        "in": "query",
+        "required": false,
+        "description": "Client-side cache-busting timestamp (milliseconds since epoch). Has no observed effect on the response other than defeating HTTP caching; safe to omit.",
+        "schema": { "type": "integer", "format": "int64" },
+        "example": 1751995200000
+      },
+      "LignesFilter": {
+        "name": "lignes",
+        "in": "query",
+        "required": false,
+        "description": "Restricts the response to a set of lines. Value is the base64 encoding of one or more `libelleCE:mnemo` pairs joined by `___` (three underscores), e.g. base64(\"CITILINK:7ANT___CITILINK:4P\"). `libelleCE` is the transit center code and `mnemo` is a line's short code (see `ligne.mnemo` in `/topo`). Malformed values have caused HTTP 500 on `/topo/vehicules` during testing — treat this parameter as fragile.",
+        "schema": { "type": "string", "format": "byte" },
+        "example": "Q0lUSUxJTks6N0FOVA=="
+      }
+    },
+    "schemas": {
+      "LatLng": {
+        "type": "object",
+        "description": "A geographic point, also used to carry a vehicle heading (`cap`) where relevant.",
+        "properties": {
+          "lat": { "type": "number", "format": "double" },
+          "lng": { "type": "number", "format": "double" },
+          "cap": { "type": "integer", "description": "Heading/bearing in degrees (0-359). Always 0 for static topology points; meaningful for vehicle positions." }
+        },
+        "required": ["lat", "lng"]
+      },
+      "Troncon": {
+        "type": "object",
+        "description": "A single road/track segment (\"tronçon\") between two points, the atomic unit of route geometry.",
+        "properties": {
+          "debut": { "$ref": "#/components/schemas/LatLng" },
+          "fin": { "$ref": "#/components/schemas/LatLng" },
+          "idTroncon": { "type": "integer" }
+        }
+      },
+      "Itineraire": {
+        "type": "object",
+        "description": "One itinerary (path variant) of a line, expressed as an ordered list of road segments.",
+        "properties": {
+          "troncons": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Troncon" }
+          }
+        }
+      },
+      "Ligne": {
+        "type": "object",
+        "description": "A transit line/route, as returned in full-topology and message contexts.",
+        "properties": {
+          "idLigne": { "type": "integer" },
+          "nomCommercial": { "type": "string", "description": "Full public-facing route name, e.g. \"7-Anthony\"." },
+          "libCommercial": { "type": "string", "description": "Short public-facing route label, e.g. \"Anthony\"." },
+          "mnemo": { "type": "string", "description": "Short internal route code, e.g. \"7ANT\". Used to build the `lignes` filter param." },
+          "couleur": { "type": "string", "description": "Hex color (e.g. \"#1b89ca\") used to render this route on the map/UI." },
+          "itineraire": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Itineraire" },
+            "description": "Full path geometry for this line. Empty array in slimmer contexts (e.g. within `/iv/message`)."
+          },
+          "messageIVExiste": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether an active service message exists for this line. Observed only as `null` in samples."
+          }
+        }
+      },
+      "InfoLigneSwiv": {
+        "type": "object",
+        "description": "Association between a stop and a line it serves, with optional display metadata. Field set observed to vary by endpoint (e.g. `estPad` in `/topo`, `couleur` in `/topo/refresh`).",
+        "properties": {
+          "idLigne": { "type": "integer" },
+          "estPad": { "type": "boolean", "description": "Whether this stop is a \"PAD\" (provisional/temporary stop) for this line. Seen in `/topo`." },
+          "couleur": { "type": "string", "description": "Hex color for this line at this stop. Seen in `/topo/refresh`." }
+        }
+      },
+      "PointArret": {
+        "type": "object",
+        "description": "A transit stop.",
+        "properties": {
+          "idPointArret": { "type": "integer" },
+          "mnemoPointArret": { "type": "string" },
+          "nomCommercial": { "type": "string" },
+          "stopCode": { "type": "string" },
+          "localisation": { "$ref": "#/components/schemas/LatLng" },
+          "infoLigneSwiv": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/InfoLigneSwiv" }
+          }
+        }
+      },
+      "Deviation": {
+        "type": "object",
+        "description": "An active route deviation's geometry, as returned in the full `/topo` snapshot.",
+        "properties": {
+          "troncons": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Troncon" }
+          }
+        }
+      },
+      "TopoCentre": {
+        "type": "object",
+        "properties": {
+          "libelleCE": { "type": "string", "description": "Transit center (\"Centre d'Exploitation\") code, e.g. \"CITILINK\"." },
+          "ligne": { "type": "array", "items": { "$ref": "#/components/schemas/Ligne" } },
+          "pointArret": { "type": "array", "items": { "$ref": "#/components/schemas/PointArret" } },
+          "deviation": { "type": "array", "items": { "$ref": "#/components/schemas/Deviation" } }
+        }
+      },
+      "TopoResponse": {
+        "type": "object",
+        "properties": {
+          "topo": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TopoCentre" },
+            "description": "One entry per configured transit center."
+          }
+        }
+      },
+      "IdTronconsGroup": {
+        "type": "object",
+        "description": "A named group of segment IDs referencing geometry already known from a prior `/topo` call.",
+        "properties": {
+          "idTroncons": {
+            "type": "array",
+            "items": { "type": "integer" }
+          }
+        }
+      },
+      "LigneRefreshUpdate": {
+        "type": "object",
+        "properties": {
+          "idLigne": { "type": "integer" },
+          "tronconsDevies": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IdTronconsGroup" },
+            "description": "Segments of the line's normal itinerary currently being bypassed."
+          },
+          "tronconsDeviation": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IdTronconsGroup" },
+            "description": "Replacement segments forming the detour path."
+          }
+        }
+      },
+      "ObjetsSuppl": {
+        "type": "object",
+        "description": "Newly-introduced geometry/stops not present in the client's original `/topo` load (e.g. a brand-new detour road not part of any known itinerary).",
+        "properties": {
+          "itineraires": { "type": "array", "items": { "$ref": "#/components/schemas/Itineraire" } },
+          "pointsArret": { "type": "array", "items": { "$ref": "#/components/schemas/PointArret" } }
+        }
+      },
+      "TopoRefreshUpdate": {
+        "type": "object",
+        "properties": {
+          "libelleCE": { "type": "string" },
+          "ligne": { "type": "array", "items": { "$ref": "#/components/schemas/LigneRefreshUpdate" } },
+          "tronconsCommun": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/IdTronconsGroup" },
+            "description": "Segments shared by multiple lines' itineraries."
+          },
+          "pointArret": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PointArret" },
+            "description": "Stops with updated line associations (typically just `idPointArret` + `infoLigneSwiv`)."
+          },
+          "objetsSuppl": { "$ref": "#/components/schemas/ObjetsSuppl" }
+        }
+      },
+      "TopoRefreshResponse": {
+        "type": "object",
+        "properties": {
+          "update": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TopoRefreshUpdate" },
+            "description": "One entry per configured transit center."
+          }
+        }
+      },
+      "ArretSuiv": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "nomCommercial": { "type": "string" },
+          "estimationTemps": { "type": "integer", "description": "Estimated time to next stop, unit not confirmed from observed data (always 0 in samples)." }
+        }
+      },
+      "Conduite": {
+        "type": "object",
+        "description": "A vehicle's current trip assignment/state.",
+        "properties": {
+          "idLigne": { "type": "integer" },
+          "vitesse": { "type": "integer", "description": "Current speed. Unit not confirmed (likely km/h or mph)." },
+          "destination": { "type": "string" },
+          "avanceRetard": { "type": "string", "description": "Human-readable schedule adherence, e.g. \"on time\", \"13 min late\"." },
+          "arretSuiv": { "$ref": "#/components/schemas/ArretSuiv" }
+        }
+      },
+      "Vehicule": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "type": { "type": "string", "description": "Vehicle make/model, e.g. \"GILLIG\"." },
+          "numeroEquipement": { "type": "string", "description": "Fleet/asset number, e.g. \"629\"." },
+          "localisation": { "$ref": "#/components/schemas/LatLng" },
+          "conduite": { "$ref": "#/components/schemas/Conduite" },
+          "tauxRemplissage": { "type": "integer", "description": "Passenger load percentage (0-100)." },
+          "vehiculeLoad": { "type": "string", "nullable": true, "description": "Passenger load as a display string, e.g. \"14%\", or null if unavailable." },
+          "estAffichable": { "type": "boolean", "description": "Whether this vehicle should be shown on the map (some vehicles are tracked but hidden, e.g. deadheading)." }
+        }
+      },
+      "VehiculesResponse": {
+        "type": "object",
+        "properties": {
+          "vehicule": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Vehicule" }
+          }
+        }
+      },
+      "VersionEntry": {
+        "type": "object",
+        "properties": {
+          "libelleCE": { "type": "string" },
+          "valeur": { "type": "integer", "description": "Opaque monotonically-changing version marker; a change signals the client should reload." }
+        }
+      },
+      "VersionResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/VersionEntry" }
+          }
+        }
+      },
+      "ServiceMessage": {
+        "type": "object",
+        "properties": {
+          "libelleCE": { "type": "string" },
+          "message": { "type": "string", "description": "Rider-facing alert text. May be an empty string." },
+          "importanceMessage": { "type": "string", "description": "Severity label, e.g. \"Importante\", \"Normale\"." },
+          "ligne": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Ligne" },
+            "description": "Lines this message applies to; empty array for a general/system-wide message."
+          }
+        }
+      },
+      "Horaire": {
+        "type": "object",
+        "description": "A single scheduled departure time slot.",
+        "properties": {
+          "idHoraire": { "type": "integer", "description": "Opaque ID for this schedule entry; used as the `idHoraire` path param for prev/next navigation." },
+          "etatHoraire": { "type": "integer", "description": "Schedule status code. Observed value: 1. Exact enum not confirmed from observed data." },
+          "etatPassage": { "type": "integer", "description": "Passage/real-time status code. Observed values: 0. Client treats `2` as \"suppressed\" (struck through) and non-`2` as normal." },
+          "horaire": { "type": "integer", "description": "Predicted/real-time departure time, in seconds since midnight." },
+          "horaireApplicable": { "type": "integer", "description": "Scheduled (theoretical) departure time, in seconds since midnight. `0` means not applicable." }
+        }
+      },
+      "HoraireDestination": {
+        "type": "object",
+        "description": "Upcoming departures for one line/destination pair at a stop.",
+        "properties": {
+          "idLigne": { "type": "integer" },
+          "destination": {
+            "type": "array",
+            "description": "Present when returned nested under `/horaires/pta/{idPointArret}`'s `listeHoraires[]`. When returned directly by `/horaires/horaire/.../{direction}`, the response IS one destination object (see note).",
+            "items": { "$ref": "#/components/schemas/Destination" }
+          }
+        }
+      },
+      "Destination": {
+        "type": "object",
+        "properties": {
+          "libelle": { "type": "string", "description": "Human-readable destination name." },
+          "libelleHexa": { "type": "string", "description": "Hex-encoded ASCII of `libelle`, used internally as a stable key." },
+          "existeSuivant": { "type": "boolean", "description": "Whether a later departure exists to page forward to." },
+          "existePrecedent": { "type": "boolean", "description": "Whether an earlier departure exists to page backward to." },
+          "modeManu": { "type": "boolean", "description": "Whether the client is in manual paging mode for this destination." },
+          "horaires": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Horaire" },
+            "description": "Usually 1-2 entries: the current departure and, when present, the one being paged to."
+          }
+        }
+      },
+      "HorairesPtaResponse": {
+        "type": "object",
+        "properties": {
+          "listeHoraires": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/HoraireDestination" },
+            "description": "Empty array when the stop has no upcoming service or the stop ID is unrecognized."
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "Standard Spring Boot error envelope returned for routing/framework-level errors (unmatched path, malformed path parameter, unhandled server exception).",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "status": { "type": "integer" },
+          "error": { "type": "string" },
+          "path": { "type": "string", "description": "Internal backend path, e.g. \"/jaxrs/SwivWS/horaires/pta/abc\" — reveals the underlying JAX-RS mount point `/jaxrs/SwivWS/` behind the public `/proxy/restWS/` prefix." }
+        }
+      }
+    }
+  }
+}

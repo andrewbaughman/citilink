@@ -1,0 +1,6 @@
+{
+  "timestamp": "2026-07-08T17:33:18.073+00:00",
+  "status": 500,
+  "error": "Internal Server Error",
+  "path": "/SWIV/CITILINK/proxy/restWS/topo/vehicules"
+}

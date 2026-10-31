@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "citilink-history",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "COORDINATOR", "class_name": "Collector" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Collector"] }],
+  "r2_buckets": [{ "binding": "ARCHIVE", "bucket_name": "citilink-history" }],
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+  "limits": { "cpu_ms": 10000 }
+}

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SWIV Citilink API POC</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: #666; margin-top: 0; font-size: 0.9rem; }
+  .notice {
+    background: #fff3cd;
+    border: 1px solid #ffe69c;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  .notice code { background: #f5efe0; padding: 1px 4px; border-radius: 3px; }
+  .panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 1.05rem; margin: 0 0 4px 0; }
+  .panel .endpoint {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.8rem;
+    color: #555;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+  button {
+    background: #1b89ca;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 14px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button:hover { background: #146a9c; }
+  input[type="text"], select {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 0.9rem;
+  }
+  label { font-size: 0.85rem; margin-right: 4px; }
+  .field { margin-right: 12px; display: inline-block; margin-bottom: 8px; }
+  .result, .summary { margin-top: 12px; font-size: 0.9rem; }
+  .error { color: #b00020; }
+  ul { margin: 4px 0; padding-left: 22px; }
+  .data-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+  .data-table th, .data-table td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
+  .badge {
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-right: 4px;
+  }
+  .importance {
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #b00020;
+    margin-right: 6px;
+  }
+  .alerts-list li { margin-bottom: 6px; }
+  .horaire-entry { border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; }
+  .line-id { font-weight: bold; margin: 0 0 4px 0; }
+  .destination-block { margin-bottom: 10px; }
+  .horaire-table { font-size: 0.85rem; }
+  .horaire-table td { padding: 2px 8px 2px 0; }
+  .nav-flags { color: #888; font-size: 0.8rem; }
+  .use-btn { padding: 3px 8px; font-size: 0.75rem; }
+  details summary { cursor: pointer; font-size: 0.85rem; color: #1b89ca; margin-top: 8px; }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 10px;
+    border-radius: 6px;
+    max-height: 400px;
+    overflow: auto;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<h1>SWIV Citilink API POC</h1>
+<p class="subtitle">Vanilla JS demo consuming every resource in <code>api-discovery/openapi.json</code>.</p>
+
+<div class="notice">
+  This API sends no CORS headers, so this page can only reach it when Chrome is
+  launched with <code>--disable-web-security</code>. Run <code>./launch-chrome.sh</code>
+  from the <code>poc/</code> directory instead of opening this file directly — otherwise
+  every button below will show a fetch error.
+</div>
+
+<div class="panel">
+  <h2>1. Topology</h2>
+  <span class="endpoint">GET /topo</span><br />
+  <button id="btn-topo">Load Topology</button>
+  <div id="topo-summary" class="summary"></div>
+  <details>
+    <summary>Raw JSON</summary>
+    <pre id="topo-raw"></pre>
+  </details>
+</div>
+
+<div class="panel">
+  <h2>2. Topology Refresh</h2>
+  <span class="endpoint">GET /topo/refresh</span><br />
+  <button id="btn-topo-refresh">Load Topo Refresh</button>
+  <div id="topo-refresh-summary" class="summary"></div>
+  <details>
+    <summary>Raw JSON</summary>
+    <pre id="topo-refresh-raw"></pre>
+  </details>
+</div>
+
+<div class="panel">
+  <h2>3. Live Vehicles</h2>
+  <span class="endpoint">GET /topo/vehicules</span><br />
+  <button id="btn-vehicles">Load Vehicles</button>
+  <div id="vehicles-result" class="result"></div>
+</div>
+
+<div class="panel">
+  <h2>4. Config Version</h2>
+  <span class="endpoint">GET /config/version</span><br />
+  <button id="btn-version">Load Version</button>
+  <div id="version-result" class="result"></div>
+</div>
+
+<div class="panel">
+  <h2>5. Service Alerts</h2>
+  <span class="endpoint">GET /iv/message</span><br />
+  <button id="btn-alerts">Load Alerts</button>
+  <div id="alerts-result" class="result"></div>
+</div>
+
+<div class="panel">
+  <h2>6. Stop Arrivals</h2>
+  <span class="endpoint">GET /horaires/pta/{idPointArret}</span><br />
+  <div class="field">
+    <label for="stop-id-input">Stop ID</label>
+    <input type="text" id="stop-id-input" value="273438" />
+  </div>
+  <button id="btn-stop-arrivals">Load Arrivals</button>
+  <div id="stop-arrivals-result" class="result"></div>
+</div>
+
+<div class="panel" id="nav-panel">
+  <h2>7. Navigate Schedule</h2>
+  <span class="endpoint">GET /horaires/horaire/{idPointArret}/{idHoraire}/{direction}</span><br />
+  <div class="field">
+    <label for="nav-stop-id-input">Stop ID</label>
+    <input type="text" id="nav-stop-id-input" value="273438" />
+  </div>
+  <div class="field">
+    <label for="nav-horaire-id-input">Horaire ID</label>
+    <input type="text" id="nav-horaire-id-input" placeholder="from panel 6" />
+  </div>
+  <div class="field">
+    <label for="nav-direction-select">Direction</label>
+    <select id="nav-direction-select">
+      <option value="SUIVANT">SUIVANT (next)</option>
+      <option value="PRECEDENT">PRECEDENT (previous)</option>
+    </select>
+  </div>
+  <br />
+  <button id="btn-nav">Navigate</button>
+  <div id="nav-result" class="result"></div>
+</div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

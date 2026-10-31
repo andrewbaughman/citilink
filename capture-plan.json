@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "global": {
+    "max_in_flight": 1,
+    "min_request_spacing_ms": 1000,
+    "max_requests_per_utc_day": 8000,
+    "reserved_essential_requests_per_utc_day": 4000,
+    "catch_up": false,
+    "honor_retry_after": true,
+    "circuit_breaker": {
+      "consecutive_failures": 5,
+      "initial_pause_seconds": 300,
+      "max_pause_seconds": 3600
+    }
+  },
+  "defaults": {
+    "timeout_seconds": 10,
+    "max_start_lag_seconds": 120,
+    "retry": {
+      "max_attempts": 2,
+      "initial_backoff_seconds": 5,
+      "max_backoff_seconds": 60
+    },
+    "health": {
+      "grace_seconds": 120,
+      "failed_windows_before_unhealthy": 3,
+      "healthy_windows_before_recovery": 2
+    }
+  },
+  "datasets": {
+    "vehicles": {
+      "enabled": true,
+      "tier": "essential",
+      "priority": 100,
+      "schedule": {
+        "interval_minutes": 1,
+        "phase_minute": 0
+      },
+      "selection": {
+        "mode": "all"
+      },
+      "health": {
+        "required": true,
+        "unchanged_body_advisory_minutes": 15
+      }
+    },
+    "topology_updates": {
+      "enabled": true,
+      "tier": "essential",
+      "priority": 90,
+      "schedule": {
+        "interval_minutes": 1,
+        "phase_minute": 0
+      },
+      "selection": {
+        "mode": "all"
+      },
+      "health": {
+        "required": true
+      }
+    },
+    "service_messages": {
+      "enabled": true,
+      "tier": "essential",
+      "priority": 70,
+      "schedule": {
+        "interval_minutes": 5,
+        "phase_minute": 1
+      },
+      "selection": {
+        "mode": "all"
+      },
+      "health": {
+        "required": true
+      }
+    },
+    "config_version": {
+      "enabled": true,
+      "tier": "essential",
+      "priority": 80,
+      "schedule": {
+        "interval_minutes": 5,
+        "phase_minute": 2
+      },
+      "selection": {
+        "mode": "all"
+      },
+      "health": {
+        "required": true
+      }
+    },
+    "full_topology": {
+      "enabled": true,
+      "tier": "essential",
+      "priority": 85,
+      "schedule": {
+        "interval_minutes": 60,
+        "phase_minute": 10
+      },
+      "selection": {
+        "mode": "all"
+      },
+      "triggers": {
+        "on_bootstrap": true,
+        "on_version_change": true,
+        "on_collection_resume": true,
+        "min_gap_minutes": 10
+      },
+      "health": {
+        "required": true
+      }
+    },
+    "stop_predictions": {
+      "enabled": false,
+      "tier": "optional",
+      "priority": 20,
+      "schedule": {
+        "interval_minutes": 5,
+        "phase_minute": 3
+      },
+      "selection": {
+        "mode": "fixed",
+        "stop_ids": [],
+        "max_stops_per_cycle": 10
+      },
+      "max_requests_per_utc_day": 4000,
+      "health": {
+        "required": true,
+        "minimum_coverage_percent": 95
+      }
+    }
+  }
+}

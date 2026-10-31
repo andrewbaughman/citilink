@@ -1,0 +1,461 @@
+{
+  "vehicule": [
+    {
+      "localisation": {
+        "lat": 41.07923954019355,
+        "lng": -85.14691043849177,
+        "cap": 259
+      },
+      "conduite": {
+        "idLigne": 13755,
+        "vitesse": 6,
+        "destination": "West Wind Apts. ",
+        "avanceRetard": "13 min late",
+        "arretSuiv": {
+          "nomCommercial": "Main before  Ewing",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1045,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "629"
+    },
+    {
+      "localisation": {
+        "lat": 41.08274280406969,
+        "lng": -85.13907587615654,
+        "cap": 169
+      },
+      "conduite": {
+        "idLigne": 13750,
+        "vitesse": 16,
+        "destination": "Central Station - Bay H",
+        "avanceRetard": "on time",
+        "arretSuiv": {
+          "nomCommercial": "Clinton @  Berry ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1044,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "1045"
+    },
+    {
+      "localisation": {
+        "lat": 41.07216860321042,
+        "lng": -85.13850597906149,
+        "cap": 329
+      },
+      "conduite": {
+        "idLigne": 13750,
+        "vitesse": 27,
+        "destination": "Central Station - Bay A",
+        "avanceRetard": "on time",
+        "arretSuiv": null
+      },
+      "id": 1035,
+      "tauxRemplissage": 14,
+      "estAffichable": true,
+      "vehiculeLoad": "14%",
+      "type": "GILLIG",
+      "numeroEquipement": "1351"
+    },
+    {
+      "localisation": {
+        "lat": 41.06853446472317,
+        "lng": -85.10318524715834,
+        "cap": 91
+      },
+      "conduite": {
+        "idLigne": 13751,
+        "vitesse": 6,
+        "destination": "Green Street",
+        "avanceRetard": "8 min late",
+        "arretSuiv": {
+          "nomCommercial": "New Haven @  Edsall",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1032,
+      "tauxRemplissage": 0,
+      "estAffichable": true,
+      "vehiculeLoad": "0%",
+      "type": "GILLIG",
+      "numeroEquipement": "2307"
+    },
+    {
+      "localisation": {
+        "lat": 41.03608731811542,
+        "lng": -85.13674898052034,
+        "cap": 219
+      },
+      "conduite": {
+        "idLigne": 13748,
+        "vitesse": 3,
+        "destination": "Southtown Centre ",
+        "avanceRetard": "6 min late",
+        "arretSuiv": {
+          "nomCommercial": "Calhoun @  Hawthorne ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1029,
+      "tauxRemplissage": 37,
+      "estAffichable": true,
+      "vehiculeLoad": "37%",
+      "type": "GILLIG",
+      "numeroEquipement": "1759"
+    },
+    {
+      "localisation": {
+        "lat": 41.05347298663331,
+        "lng": -85.12648635776725,
+        "cap": 87
+      },
+      "conduite": {
+        "idLigne": 13754,
+        "vitesse": 4,
+        "destination": "Wayne Trace @ Wayne Park ",
+        "avanceRetard": "6 min late",
+        "arretSuiv": {
+          "nomCommercial": "Oxford @ S Park Dr",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1028,
+      "tauxRemplissage": 26,
+      "estAffichable": true,
+      "vehiculeLoad": "26%",
+      "type": "GILLIG",
+      "numeroEquipement": "2409"
+    },
+    {
+      "localisation": {
+        "lat": 41.07516513811601,
+        "lng": -85.14796588872977,
+        "cap": 175
+      },
+      "conduite": {
+        "idLigne": 13742,
+        "vitesse": 5,
+        "destination": "Hickory Creek Apts.",
+        "avanceRetard": "12 min late",
+        "arretSuiv": {
+          "nomCommercial": "Broadway @  Lavina ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1022,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "2201"
+    },
+    {
+      "localisation": {
+        "lat": 41.079441537535864,
+        "lng": -85.1457783223116,
+        "cap": 258
+      },
+      "conduite": {
+        "idLigne": 13746,
+        "vitesse": 3,
+        "destination": "Profit @ Executive ",
+        "avanceRetard": "13 min late",
+        "arretSuiv": {
+          "nomCommercial": "Superior @  Van Buren ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1020,
+      "tauxRemplissage": 11,
+      "estAffichable": true,
+      "vehiculeLoad": "11%",
+      "type": "GILLIG",
+      "numeroEquipement": "2202"
+    },
+    {
+      "localisation": {
+        "lat": 41.10517232768846,
+        "lng": -85.11571755072958,
+        "cap": 358
+      },
+      "conduite": {
+        "idLigne": 13763,
+        "vitesse": 9,
+        "destination": "Roebuck @ St. Joe",
+        "avanceRetard": "7 min late",
+        "arretSuiv": {
+          "nomCommercial": "Wendy's",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1019,
+      "tauxRemplissage": 11,
+      "estAffichable": true,
+      "vehiculeLoad": "11%",
+      "type": "GILLIG",
+      "numeroEquipement": "2203"
+    },
+    {
+      "localisation": {
+        "lat": 41.09702399375434,
+        "lng": -85.10842932564536,
+        "cap": 88
+      },
+      "conduite": {
+        "idLigne": 13744,
+        "vitesse": 7,
+        "destination": "Harshman Hall",
+        "avanceRetard": "5 min late",
+        "arretSuiv": {
+          "nomCommercial": "State @  Beacon",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1018,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "1554"
+    },
+    {
+      "localisation": {
+        "lat": 41.03074927718033,
+        "lng": -85.14305859762479,
+        "cap": 156
+      },
+      "conduite": {
+        "idLigne": 13747,
+        "vitesse": 11,
+        "destination": "Hessen Cassel Library",
+        "avanceRetard": "8 min late",
+        "arretSuiv": {
+          "nomCommercial": "Fairfield @  Birchtree ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1017,
+      "tauxRemplissage": 11,
+      "estAffichable": true,
+      "vehiculeLoad": "11%",
+      "type": "GILLIG",
+      "numeroEquipement": "2204"
+    },
+    {
+      "localisation": {
+        "lat": 41.07292414925979,
+        "lng": -85.18993970247953,
+        "cap": 359
+      },
+      "conduite": {
+        "idLigne": 13752,
+        "vitesse": 5,
+        "destination": "Meijers Store",
+        "avanceRetard": "4 min late",
+        "arretSuiv": {
+          "nomCommercial": "Burlington  Coat Factory",
+          "estimationTemps": 1
+        }
+      },
+      "id": 1016,
+      "tauxRemplissage": 6,
+      "estAffichable": true,
+      "vehiculeLoad": "6%",
+      "type": "GILLIG",
+      "numeroEquipement": "1555"
+    },
+    {
+      "localisation": {
+        "lat": 41.140992683938734,
+        "lng": -85.16286090985409,
+        "cap": 171
+      },
+      "conduite": {
+        "idLigne": 13757,
+        "vitesse": 4,
+        "destination": "Meijer on Center Rd",
+        "avanceRetard": "on time",
+        "arretSuiv": {
+          "nomCommercial": "Cross Creek @  Kelsey Ct.",
+          "estimationTemps": 1
+        }
+      },
+      "id": 1014,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "Elkhart Coach",
+      "numeroEquipement": "2425"
+    },
+    {
+      "localisation": {
+        "lat": 41.06570909336864,
+        "lng": -85.12811141456746,
+        "cap": 332
+      },
+      "conduite": {
+        "idLigne": 13756,
+        "vitesse": 2,
+        "destination": "Southtown Centre ",
+        "avanceRetard": "10 min late",
+        "arretSuiv": {
+          "nomCommercial": "Creighton near  Weisser Park",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1013,
+      "tauxRemplissage": 11,
+      "estAffichable": true,
+      "vehiculeLoad": "11%",
+      "type": "GILLIG",
+      "numeroEquipement": "2205"
+    },
+    {
+      "localisation": {
+        "lat": 41.098070996859256,
+        "lng": -85.07816148610401,
+        "cap": 88
+      },
+      "conduite": {
+        "idLigne": 13760,
+        "vitesse": 11,
+        "destination": "Northwood Plaza",
+        "avanceRetard": "3 min late",
+        "arretSuiv": {
+          "nomCommercial": "State @  Berkley",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1012,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "1556"
+    },
+    {
+      "localisation": {
+        "lat": 41.10923851238782,
+        "lng": -85.14784068623939,
+        "cap": 357
+      },
+      "conduite": {
+        "idLigne": 13741,
+        "vitesse": 14,
+        "destination": "Washington Center Huguenard",
+        "avanceRetard": "6 min late",
+        "arretSuiv": {
+          "nomCommercial": "401 Fernhill",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1009,
+      "tauxRemplissage": 0,
+      "estAffichable": true,
+      "vehiculeLoad": "0%",
+      "type": "GILLIG",
+      "numeroEquipement": "1876"
+    },
+    {
+      "localisation": {
+        "lat": 41.11304617235505,
+        "lng": -85.14158369960668,
+        "cap": 231
+      },
+      "conduite": {
+        "idLigne": 13750,
+        "vitesse": 5,
+        "destination": "Westfield",
+        "avanceRetard": "6 min late",
+        "arretSuiv": {
+          "nomCommercial": "Coldwater before  Coliseum",
+          "estimationTemps": 2
+        }
+      },
+      "id": 1008,
+      "tauxRemplissage": 46,
+      "estAffichable": true,
+      "vehiculeLoad": "46%",
+      "type": "GILLIG",
+      "numeroEquipement": "1557"
+    },
+    {
+      "localisation": {
+        "lat": 41.12035016121746,
+        "lng": -85.12625988883437,
+        "cap": 315
+      },
+      "conduite": {
+        "idLigne": 13753,
+        "vitesse": 1,
+        "destination": "Colony & Campus",
+        "avanceRetard": "on time",
+        "arretSuiv": {
+          "nomCommercial": "Northcrest Shopping",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1007,
+      "tauxRemplissage": 0,
+      "estAffichable": true,
+      "vehiculeLoad": "0%",
+      "type": "GILLIG",
+      "numeroEquipement": "2306"
+    },
+    {
+      "localisation": {
+        "lat": 41.07858834698707,
+        "lng": -85.13056482278714,
+        "cap": 259
+      },
+      "conduite": {
+        "idLigne": 13744,
+        "vitesse": 15,
+        "destination": "Central Station - Bay O",
+        "avanceRetard": "on time",
+        "arretSuiv": {
+          "nomCommercial": "Washington @  Lafayette ",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1004,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "1041"
+    },
+    {
+      "localisation": {
+        "lat": 41.04559234439074,
+        "lng": -85.19817747165148,
+        "cap": 236
+      },
+      "conduite": {
+        "idLigne": 13743,
+        "vitesse": 14,
+        "destination": "Sandpoint @ Allegany",
+        "avanceRetard": "2 min late",
+        "arretSuiv": {
+          "nomCommercial": "Clubview @  Engle",
+          "estimationTemps": 0
+        }
+      },
+      "id": 1001,
+      "tauxRemplissage": 0,
+      "estAffichable": false,
+      "vehiculeLoad": null,
+      "type": "GILLIG",
+      "numeroEquipement": "1044"
+    }
+  ]
+}

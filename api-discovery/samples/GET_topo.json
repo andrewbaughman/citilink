@@ -1,0 +1,267 @@
+{
+  "topo": [
+    {
+      "ligne": [
+        {
+          "nomCommercial": "1-Northcrest",
+          "libCommercial": "Northcrest",
+          "mnemo": "1N",
+          "couleur": "#db225d",
+          "itineraire": [
+            {
+              "troncons": [
+                {
+                  "debut": {
+                    "lat": 41.1337421396143,
+                    "lng": -85.11338520020712,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.133712136066876,
+                    "lng": -85.11338520218963,
+                    "cap": 0
+                  },
+                  "idTroncon": 2501234
+                },
+                {
+                  "debut": {
+                    "lat": 41.133712136066876,
+                    "lng": -85.11338520218963,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.133492139979765,
+                    "lng": -85.11337520014823,
+                    "cap": 0
+                  },
+                  "idTroncon": 2501235
+                },
+                {
+                  "_note": "... 114 more troncons omitted"
+                }
+              ],
+              "_note": "... 6 more itineraire segments omitted"
+            }
+          ],
+          "messageIVExiste": false,
+          "idLigne": 13753
+        },
+        {
+          "nomCommercial": "1-River Cove",
+          "libCommercial": "River Cove",
+          "mnemo": "1ARC",
+          "couleur": "#db225d",
+          "itineraire": [
+            {
+              "troncons": [
+                {
+                  "debut": {
+                    "lat": 41.14881213120648,
+                    "lng": -85.10951520040025,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.148842133413964,
+                    "lng": -85.10956520649118,
+                    "cap": 0
+                  },
+                  "idTroncon": 2502348
+                },
+                {
+                  "debut": {
+                    "lat": 41.148842133413964,
+                    "lng": -85.10956520649118,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.14881213426222,
+                    "lng": -85.10960520148208,
+                    "cap": 0
+                  },
+                  "idTroncon": 2502349
+                },
+                {
+                  "_note": "... 116 more troncons omitted"
+                }
+              ],
+              "_note": "... 6 more itineraire segments omitted"
+            }
+          ],
+          "messageIVExiste": false,
+          "idLigne": 13745
+        },
+        {
+          "nomCommercial": "1-Social Security",
+          "libCommercial": "Social Security",
+          "mnemo": "1SS",
+          "couleur": "#db225d",
+          "itineraire": [
+            {
+              "troncons": [
+                {
+                  "debut": {
+                    "lat": 41.00624216231931,
+                    "lng": -85.16615519792906,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.00625216130031,
+                    "lng": -85.16624520263437,
+                    "cap": 0
+                  },
+                  "idTroncon": 2502779
+                },
+                {
+                  "debut": {
+                    "lat": 41.00625216130031,
+                    "lng": -85.16624520263437,
+                    "cap": 0
+                  },
+                  "fin": {
+                    "lat": 41.00605216130087,
+                    "lng": -85.16625519113279,
+                    "cap": 0
+                  },
+                  "idTroncon": 2502780
+                },
+                {
+                  "_note": "... 346 more troncons omitted"
+                }
+              ],
+              "_note": "... 8 more itineraire segments omitted"
+            }
+          ],
+          "messageIVExiste": false,
+          "idLigne": 13762
+        }
+      ],
+      "pointArret": [
+        {
+          "nomCommercial": "1st Source Bank",
+          "stopCode": "744",
+          "infoLigneSwiv": [
+            {
+              "idLigne": 13762,
+              "estPad": false
+            },
+            {
+              "idLigne": 13742,
+              "estPad": false
+            }
+          ],
+          "localisation": {
+            "lat": 41.0315331604751,
+            "lng": -85.16613418876962,
+            "cap": 0
+          },
+          "idPointArret": 273438,
+          "mnemoPointArret": "744"
+        },
+        {
+          "nomCommercial": "401 Fernhill",
+          "stopCode": "727",
+          "infoLigneSwiv": [
+            {
+              "idLigne": 13741,
+              "estPad": false
+            }
+          ],
+          "localisation": {
+            "lat": 41.111287845641804,
+            "lng": -85.14597148948276,
+            "cap": 0
+          },
+          "idPointArret": 273997,
+          "mnemoPointArret": "727"
+        },
+        {
+          "nomCommercial": "930 near  McDonald's",
+          "stopCode": "226",
+          "infoLigneSwiv": [
+            {
+              "idLigne": 13751,
+              "estPad": false
+            }
+          ],
+          "localisation": {
+            "lat": 41.06959074281125,
+            "lng": -85.04534272793889,
+            "cap": 0
+          },
+          "idPointArret": 274019,
+          "mnemoPointArret": "226"
+        }
+      ],
+      "deviation": [
+        {
+          "troncons": [
+            {
+              "debut": {
+                "lat": 41.089532150398824,
+                "lng": -85.1679551905959,
+                "cap": 0
+              },
+              "fin": {
+                "lat": 41.089549820515316,
+                "lng": -85.16696443403934,
+                "cap": 0
+              },
+              "idTroncon": 2511138
+            },
+            {
+              "debut": {
+                "lat": 41.089549820515316,
+                "lng": -85.16696443403934,
+                "cap": 0
+              },
+              "fin": {
+                "lat": 41.08954594485955,
+                "lng": -85.16688055366737,
+                "cap": 0
+              },
+              "idTroncon": 2511139
+            },
+            {
+              "_note": "... 13 more troncons omitted"
+            }
+          ]
+        },
+        {
+          "troncons": [
+            {
+              "debut": {
+                "lat": 41.0903421411821,
+                "lng": -85.08805521065665,
+                "cap": 0
+              },
+              "fin": {
+                "lat": 41.090482142962415,
+                "lng": -85.08806521807976,
+                "cap": 0
+              },
+              "idTroncon": 2511104
+            },
+            {
+              "debut": {
+                "lat": 41.090482142962415,
+                "lng": -85.08806521807976,
+                "cap": 0
+              },
+              "fin": {
+                "lat": 41.09202169578997,
+                "lng": -85.08811467498845,
+                "cap": 0
+              },
+              "idTroncon": 2511105
+            },
+            {
+              "_note": "... 32 more troncons omitted"
+            }
+          ]
+        }
+      ],
+      "libelleCE": "CITILINK",
+      "_note": "TRUNCATED SAMPLE for readability \u2014 full live response has 20 ligne, 751 pointArret, 41 deviation entries, each with complete itineraire/troncon lat-lng geometry. See raw/topo.json (~2MB) for the untruncated capture."
+    }
+  ]
+}

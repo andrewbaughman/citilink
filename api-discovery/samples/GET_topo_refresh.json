@@ -1,0 +1,121 @@
+{
+  "update": [
+    {
+      "ligne": [
+        {
+          "tronconsDevies": [
+            {
+              "idTroncons": [
+                2502943,
+                2502298,
+                2502299,
+                "... 5 more ids omitted"
+              ]
+            }
+          ],
+          "tronconsDeviation": [
+            {
+              "idTroncons": [
+                2510633,
+                2510634,
+                2510635,
+                "... 6 more ids omitted"
+              ]
+            }
+          ],
+          "idLigne": 13744
+        },
+        {
+          "tronconsDevies": [
+            {
+              "idTroncons": [
+                2497072
+              ]
+            }
+          ],
+          "tronconsDeviation": [
+            {
+              "idTroncons": [
+                2510359,
+                2510360,
+                2510361,
+                "... 25 more ids omitted"
+              ]
+            }
+          ],
+          "idLigne": 13755
+        }
+      ],
+      "tronconsCommun": [
+        {
+          "idTroncons": [
+            2504807,
+            2504808,
+            2504809,
+            "... 11 more ids omitted"
+          ]
+        }
+      ],
+      "pointArret": [
+        {
+          "infoLigneSwiv": [
+            {
+              "idLigne": 13756,
+              "couleur": "#000000"
+            }
+          ],
+          "idPointArret": 273839
+        },
+        {
+          "infoLigneSwiv": [
+            {
+              "idLigne": 13756,
+              "couleur": "#FFFF00"
+            }
+          ],
+          "idPointArret": 274083
+        }
+      ],
+      "objetsSuppl": {
+        "itineraires": [
+          {
+            "troncons": [
+              {
+                "debut": {
+                  "lat": 41.12187213737976,
+                  "lng": -85.0974652123875,
+                  "cap": 0
+                },
+                "fin": {
+                  "lat": 41.12194899290978,
+                  "lng": -85.09506337259268,
+                  "cap": 0
+                },
+                "idTroncon": 2510633
+              },
+              {
+                "debut": {
+                  "lat": 41.12194899290978,
+                  "lng": -85.09506337259268,
+                  "cap": 0
+                },
+                "fin": {
+                  "lat": 41.12107969526442,
+                  "lng": -85.09506395597444,
+                  "cap": 0
+                },
+                "idTroncon": 2510634
+              },
+              {
+                "_note": "... 7 more troncons omitted"
+              }
+            ]
+          }
+        ],
+        "pointsArret": []
+      },
+      "libelleCE": "CITILINK",
+      "_note": "TRUNCATED SAMPLE \u2014 full live response had 4 ligne entries, 112 tronconsCommun groups. See raw/topo_refresh.json for the untruncated capture."
+    }
+  ]
+}
