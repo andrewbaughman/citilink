@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { estimatePlan, retryAfter, validatePlan } from '../src/plan';
 import { plan } from './helpers';
-test('default traffic is 3480/day; optional ten-stop panel is 6360/day',()=>{
+test('disabled-prediction fixture is 3480/day; legacy ten-stop panel is 6360/day',()=>{
   const p=plan();assert.equal(estimatePlan(validatePlan(p)).total,3480);
   p.datasets.stop_predictions.enabled=true;p.datasets.stop_predictions.selection.stop_ids=Array.from({length:10},(_,i)=>i+1);
   assert.equal(estimatePlan(validatePlan(p)).total,6360);

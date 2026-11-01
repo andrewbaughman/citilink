@@ -2,7 +2,15 @@ import { URL } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { Engine, type IO, type Store } from '../src/collector';
 import type { Bucket } from '../src/archive';
-export function plan() { return JSON.parse(readFileSync(new URL('../capture-plan.json',import.meta.url),'utf8')); }
+export function deployedPlan() { return JSON.parse(readFileSync(new URL('../capture-plan.json',import.meta.url),'utf8')); }
+// Isolate legacy core-feed tests; deployedPlan() returns the actual campaign configuration.
+export function plan() {
+ const p=deployedPlan();
+ p.datasets.stop_predictions.enabled=false;
+ p.datasets.stop_predictions.schedule={interval_minutes:5,phase_minute:3};
+ p.datasets.stop_predictions.selection={mode:'fixed',stop_ids:[],max_stops_per_cycle:10};
+ return p;
+}
 export class MemoryStore implements Store {
   values=new Map<string,unknown>();
   async get<T>(key:string):Promise<T|undefined> { return structuredClone(this.values.get(key)) as T|undefined; }

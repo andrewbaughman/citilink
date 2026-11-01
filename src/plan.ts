@@ -1,3 +1,4 @@
+import type { Selection } from './selection';
 export const ENDPOINTS = {
   vehicles: '/topo/vehicules',
   topology_updates: '/topo/refresh',
@@ -22,7 +23,7 @@ export interface DatasetPlan {
   tier: 'essential' | 'optional';
   priority: number;
   schedule: { interval_minutes: number; phase_minute: number };
-  selection: { mode: 'all' | 'fixed' | 'round_robin'; stop_ids?: number[]; max_stops_per_cycle?: number };
+  selection: Selection;
   max_requests_per_utc_day?: number;
   timeout_seconds: number;
   max_start_lag_seconds: number;
@@ -89,15 +90,29 @@ export function validatePlan(raw: unknown): Plan {
     if (d.tier !== 'essential' && d.tier !== 'optional') throw Error(`${id}: invalid tier`);
     integer(d.priority, 0, 1000, `${id}.priority`);
     const selection = object(d.selection, `${id}.selection`);
-    fields(selection, ['mode','stop_ids','max_stops_per_cycle'], `${id}.selection`);
+    fields(selection, ['mode','stop_ids','max_stops_per_cycle','permanent_stop_code','starts_month','campaigns'], `${id}.selection`);
     if (id === 'stop_predictions') {
-      if (selection.mode !== 'fixed' && selection.mode !== 'round_robin') throw Error('Stops require an explicit fixed or bounded rotating panel');
+      if (!['fixed','round_robin','campaign'].includes(selection.mode as string)) throw Error('Stops require an explicit fixed or bounded rotating panel');
       const cap = integer(selection.max_stops_per_cycle, 1, 100, 'stop cap');
+      if(selection.mode==='campaign'){
+        if(cap!==4 || selection.stop_ids!==undefined)throw Error('Campaign requires four stops and uses stable codes');
+        if(typeof selection.permanent_stop_code!=='string' || !/^[A-Za-z0-9_-]+$/.test(selection.permanent_stop_code))throw Error('Invalid permanent stop code');
+        if(typeof selection.starts_month!=='string' || !/^20\d\d-(0[1-9]|1[0-2])$/.test(selection.starts_month))throw Error('Invalid campaign start month');
+        if(!Array.isArray(selection.campaigns) || !selection.campaigns.length)throw Error('Campaign list required');
+        const campaignIds=new Set<string>();
+        for(const item of selection.campaigns){
+          const c=object(item,'campaign');fields(c,['id','label','route_mnemo','direction','study_stop_codes'],'campaign');
+          for(const k of ['id','label','route_mnemo','direction'])if(typeof c[k]!=='string' || !c[k])throw Error('Campaign metadata required');
+          if(!/^[A-Za-z0-9_-]+$/.test(c.id as string) || campaignIds.has(c.id as string))throw Error('Campaign IDs must be unique');
+          campaignIds.add(c.id as string);
+          if(!Array.isArray(c.study_stop_codes) || c.study_stop_codes.length!==3 || c.study_stop_codes.some(v=>typeof v!=='string' || !/^[A-Za-z0-9_-]+$/.test(v)) || new Set([...c.study_stop_codes,selection.permanent_stop_code]).size!==4)throw Error('Campaign requires three unique study codes distinct from the permanent reference');
+        }
+      }else if(selection.campaigns!==undefined || selection.permanent_stop_code!==undefined || selection.starts_month!==undefined)throw Error('Campaign fields require campaign mode');
       const stops = selection.stop_ids;
       if (stops !== undefined && (!Array.isArray(stops) || stops.some(s => !Number.isSafeInteger(s) || s <= 0) || new Set(stops).size !== stops.length)) throw Error('Stop IDs must be unique positive integers');
       if (selection.mode === 'fixed' && (!Array.isArray(stops) || stops.length > cap || (d.enabled && !stops.length))) throw Error('Enabled fixed panel requires 1..cap explicit stop IDs');
       if (selection.mode === 'round_robin' && Array.isArray(stops) && stops.length) throw Error('Rotating selection uses the discovered roster, not stop_ids');
-    } else if (selection.mode !== 'all' || selection.stop_ids !== undefined || selection.max_stops_per_cycle !== undefined) throw Error(`${id}: requires one unfiltered request`);
+    } else if (selection.mode !== 'all' || selection.stop_ids !== undefined || selection.max_stops_per_cycle !== undefined || selection.campaigns !== undefined || selection.permanent_stop_code !== undefined || selection.starts_month !== undefined) throw Error(`${id}: requires one unfiltered request`);
     const retry = { ...object(defaults.retry,'default.retry'), ...object(d.retry ?? {},`${id}.retry`) };
     fields(retry, ['max_attempts','initial_backoff_seconds','max_backoff_seconds'], 'retry');
     integer(retry.max_attempts, 1, 3, 'attempts');

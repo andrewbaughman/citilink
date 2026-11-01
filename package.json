@@ -17,7 +17,8 @@
     "check": "npm run plan && npm run typecheck && npm test",
     "provision": "node scripts/provision.mjs",
     "deploy": "npm run check && node scripts/deploy.mjs",
-    "verify:live": "node scripts/verify.mjs"
+    "verify:live": "node scripts/verify.mjs",
+    "verify:campaign": "node scripts/verify-campaign.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261031.1",

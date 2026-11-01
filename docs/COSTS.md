@@ -4,13 +4,13 @@
 
 ## Working budget
 
-For the default 3,480 upstream requests/day and approximately 6 GB of new JSON/month:
+For the default 6,360 upstream requests/day and approximately 6 GB of new JSON/month:
 
 | Component | Expected initial monthly charge | Assumption |
 | --- | ---: | --- |
 | Workers Paid | $5 | Account-level minimum; includes this small workload's expected Worker usage |
 | Single SQLite-backed Durable Object | $0 extra | Fits the Paid plan's included requests, duration, and operational storage |
-| R2 response/manifest writes and ordinary reads | $0 | Approximately 148,000 writes/month; low-volume health/status/download usage |
+| R2 response/manifest writes and ordinary reads | $0 | Approximately 255,600 writes/month; low-volume health/status/download usage |
 | R2 Standard storage | $0 initially | Starts empty; included 10 GB-month allowance is available |
 | External email monitor | $0 if a suitable free plan is available; budget up to $10 if paid | Vendor and interval not selected; this is an allowance, not a verified quote |
 | **Initial total** | **Approximately $5/month, or $5–$15 allowing for monitoring** | Excludes tax and any new domain registration |
@@ -31,9 +31,10 @@ Current documentation source was retrieved from Cloudflare's public `cloudflare/
 
 Default 30-day file counts, before retries or exceptional topology refreshes:
 
-- 3,480 API responses/day × 30 = **104,400 response JSON files**.
+- 6,360 API responses/day × 30 = **190,800 response JSON files**, including 86,400 prediction responses.
 - One manifest/minute × 43,200 minutes = **43,200 manifest JSON files**.
-- Total approximately **147,600 R2 writes/month**, with very few configuration snapshots. A diagnostic JSON file replaces a normal response file for exceptional content; it does not also require a binary object.
+- One prediction receipt per two-minute cycle = **21,600 metadata JSON files**.
+- Total approximately **255,600 R2 writes/month**, with very few configuration snapshots. A diagnostic JSON file replaces a normal response file for exceptional content; it does not also require a binary object.
 
 Sample-based payload projection:
 
@@ -44,7 +45,9 @@ Sample-based payload projection:
 | Messages | 979 bytes | 8,640 | 0.008 |
 | Version | 53 bytes | 8,640 | <0.001 |
 | Full topology | 1,974,216 bytes | 720 | 1.421 |
-| **Response total** | | **104,400** | **5.538** |
+| Core response subtotal | | 104,400 | 5.538 |
+| Four-stop predictions | 833-byte illustrative sample | 86,400 | 0.072 |
+| **Response total** | | **190,800** | **5.610** |
 
 Allow approximately **6 GB/month** after manifests and a modest allowance for extra work. This is a sample-based planning value, not an upper bound: larger payloads, verbose metadata, diagnostics, and retries can increase it. Sizes above use decimal GB; actual billable measurements may differ slightly. One 24-hour pilot should replace these estimates with measured bytes and operations.
 
@@ -56,13 +59,13 @@ Storage is retained and accumulates. R2 charges for average daily peak stored vo
 | One year | 72 GB | About $0.93/month | About $6/month |
 | Five years | 360 GB | About $5.25/month | About $10/month |
 
-Formula before billing rounding: `max(retained GB - 10, 0) × $0.015` per month. The actual month's average charge is slightly lower than the end-of-month run rate when data is being added throughout that month. At 6 GB/month from an empty bucket, storage should remain within the included allowance for the first two months on an average-volume basis, then start adding pennies. Optional ten-stop prediction sampling adds 86,400 JSON files/month; at the single uploaded 833-byte example it adds about 0.072 GB/month, but real stop responses vary.
+Formula before billing rounding: `max(retained GB - 10, 0) × $0.015` per month. The actual month's average charge is slightly lower than the end-of-month run rate when data is being added throughout that month. At 6 GB/month from an empty bucket, storage should remain within the included allowance for the first two months on an average-volume basis, then start adding pennies. The deployed four-stop/two-minute prediction panel adds 86,400 JSON files/month; at the single uploaded 833-byte example it adds about 0.072 GB/month, but real stop responses vary.
 
 ## Best ways to reduce cost
 
 1. **Use available allowances and a free email monitor.** An existing Workers Paid subscription is shared; a second subscription is unnecessary. Free external monitoring is the largest potential saving after the fixed Worker fee. Accept a slower monitor check interval only if the longer outage-notification delay is acceptable. Keep the collector's acquisition schedule independent of the monitor's check interval.
 2. **Consider Workers Free after profiling.** SQLite-backed Durable Objects are available on Free. If all runtime/CPU/daily quotas pass realistic tests, and R2 remains within its allowances, the initial Cloudflare bill could be near $0. This is not yet verified. Free quota exhaustion rejects operations and can interrupt capture; Paid is a small fixed cost for more headroom. Do not remove pacing, health, or durable accounting just to save $5.
-3. **Reduce static/context polling before vehicle sampling.** Changing topology refresh from every minute to every five minutes saves about 3.03 GB of new payload/month. Changing full topology from hourly to daily, while retaining coalesced version-triggered refreshes, saves about another 1.36 GB/month before extra triggers. Combined, these changes reduce the sample response projection from 5.54 GB to approximately 1.14 GB/month, plus manifests and triggers. They also reduce baseline API traffic from 3,480 to 2,305 requests/day. They sacrifice detail about short-lived topology changes, and require confirmation of the refresh/version endpoint semantics. Do not change the defaults automatically; these are configurable options. Vehicles can remain at one-minute cadence.
+3. **Reduce static/context polling before vehicle sampling.** Changing topology refresh from every minute to every five minutes saves about 3.03 GB of new payload/month. Changing full topology from hourly to daily, while retaining coalesced version-triggered refreshes, saves about another 1.36 GB/month before extra triggers. Combined, these changes reduce the sample response projection from 5.54 GB to approximately 1.14 GB/month, plus manifests and triggers. With the prediction panel retained, they reduce baseline API traffic from 6,360 to 5,185 requests/day. They sacrifice detail about short-lived topology changes, and require confirmation of the refresh/version endpoint semantics. Do not change the defaults automatically; these are configurable options. Vehicles can remain at one-minute cadence.
 4. **Keep metadata/state/logs bounded.** Write one manifest per cycle, retain only current/recent coordinator state, avoid full-payload logging, and have health checks read compact coordinator state rather than listing the archive. Keep historical response JSON and manifests in R2. At this scale, more elaborate write batching would add maintenance without reducing an already included operation charge.
 5. **Choose a retention limit only if history can be discarded.** R2 lifecycle deletion can cap storage, but conflicts with the goal of building a long-term historical record. Default remains indefinite retention; no deletion rule has been enabled. Likewise, deduplication is not part of this design because every retrieved observation should have its own response file.
 

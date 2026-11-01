@@ -1,5 +1,6 @@
 import { API_BASE, type DatasetId } from './plan';
 export interface Bucket {
+  get?(key: string): Promise<{text(): Promise<string>} | null>;
   put(key: string, value: string | ArrayBuffer | Uint8Array, options?: { httpMetadata: { contentType: string } }): Promise<unknown>;
 }
 export const jsonOptions = { httpMetadata: { contentType: 'application/json' } };

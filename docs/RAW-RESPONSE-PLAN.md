@@ -4,7 +4,7 @@
 
 Build a low-maintenance historical archive of Citilink's public API. Save every response in a `.json` file. Preserve valid JSON response bytes exactly as retrieved, with separate acquisition metadata. Preserve unexpected non-JSON or incomplete responses losslessly inside JSON diagnostic records. Later analysis, prediction evaluation, reliability reports, and accessibility services can read the archive.
 
-This design has been implemented and deployed. See [DEPLOYMENT.md](DEPLOYMENT.md) for verified live collection, archive integrity, and monitoring results. Endpoint descriptions began with the uploaded project's reverse-engineered documentation; all five enabled feeds have now returned and archived valid live JSON. Acceptable expansion beyond the conservative polling plan still needs confirmation with the source operator.
+This design has been implemented and deployed. See [DEPLOYMENT.md](DEPLOYMENT.md) for verified live collection, archive integrity, and monitoring results. Endpoint descriptions began with the uploaded project's reverse-engineered documentation; all six enabled feeds have now returned and archived valid live JSON. Acceptable expansion beyond the conservative polling plan still needs confirmation with the source operator.
 
 ## Small architecture
 
@@ -30,14 +30,14 @@ API base: `https://swiv.citilink.cadavl.com/SWIV/CITILINK/proxy/restWS`.
 | Service messages | `/iv/message` | Every five minutes | 288 |
 | Configuration version | `/config/version` | Every five minutes | 288 |
 | Full routes and stops | `/topo` | Hourly | 24 |
-| Stop predictions | `/horaires/pta/{idPointArret}` | Disabled | 0 |
-| **Total** | | | **3,480** |
+| Stop predictions | `/horaires/pta/{idPointArret}` | Four stops every two minutes | 2,880 |
+| **Total** | | | **6,360** |
 
 Full topology also refreshes at bootstrap, after version changes, and on collection resume. Coalesce overlapping triggers and enforce a ten-minute minimum gap. Exceptional requests and retries count toward budgets but are not included in the base total.
 
 The fleet endpoint returns all available buses in one request. Preserve every returned vehicle and field, including vehicles the map would hide. Store topology updates as separate raw responses; do not merge them into a reconstructed network.
 
-If useful, enable a fixed panel of up to ten stops every five minutes. This adds 2,880 requests/day, for approximately 6,360 total before retries and exceptional refreshes. Alternatively, rotate a small panel across known stops and display the full sweep duration. Do not enable all-stop minute polling or automatically increase coverage. The sample's 751 stops would otherwise require about 1.08 million requests/day.
+The deployed prediction panel has one permanent reference and three spaced study stops on a route. Study panels change automatically every UTC calendar month through a repeating three-corridor sequence; all four stops are polled every two minutes. See [CAMPAIGNS.md](CAMPAIGNS.md) for exact codes, route/direction labels, validation, and monthly order. Full-fleet collection continues independently. All-stop minute polling remains disabled.
 
 Run all day. Empty fleets, empty predictions, nulls, and unchanged responses can be legitimate data. Store and schedule in UTC; display Fort Wayne service dates using `America/Indiana/Indianapolis`.
 
@@ -137,7 +137,7 @@ A dataset is unhealthy when either:
 - The current time exceeds `last successful scheduled slot + interval + grace`.
 - Its configured number of scheduled windows fail, default three.
 
-Count only complete, structurally valid archived responses as healthy, while preserving invalid responses too. With the default 120-second grace, one-minute feeds become stale after three minutes, five-minute feeds after seven, and hourly topology after 62. At startup, allow until each first due slot plus grace and display warming up; full topology has an immediate bootstrap trigger. Disabled datasets are excluded. In the example, enabling stop predictions makes their coverage required, with a 95% target.
+Count only complete, structurally valid archived responses as healthy, while preserving invalid responses too. With the default 120-second grace, one-minute feeds become stale after three minutes, five-minute feeds after seven, and hourly topology after 62. At startup, allow until each first due slot plus grace and display warming up; full topology has an immediate bootstrap trigger. Disabled datasets are excluded. The deployed prediction panel requires all four responses (100% coverage) to be archived successfully.
 
 Budget skips, circuit-breaker pauses, and timeouts count as missed windows. Empty valid lists do not. Unchanged fleet bodies can be a stale-source advisory during expected service, but do not by themselves prove an outage. Upstream freshness may be unknown without source timestamps.
 
@@ -149,7 +149,7 @@ One external monitor is intentional: Cloudflare-only monitoring cannot reliably 
 
 Budget approximately **$5/month for Cloudflare initially**, plus any paid external monitoring. At sample-sized responses and a rounded **6 GB of new JSON per month**, retaining a year of history brings Cloudflare to roughly **$6/month**. Allow **$5–$15/month total** as a planning range if the external monitor costs up to $10/month; that monitoring allowance is a budget assumption, not a verified vendor quote. A free monitor can keep the starting total near $5, but its supported check interval/email features must be verified.
 
-The default 30-day volume is approximately 104,400 response files and 43,200 manifests, or 147,600 R2 writes before retries/exceptional refreshes. This is below R2 Standard's included one million Class A operations/month. Small status/download read volumes should fit its included ten million Class B operations/month. Storage includes ten GB-month/month; excess Standard storage is $0.015/GB-month. These allowances are shared at account level, not reserved for this project.
+The default 30-day volume is approximately 190,800 response files, 43,200 manifests, and 21,600 prediction receipts, or 255,600 R2 writes before retries/exceptional refreshes. This is below R2 Standard's included one million Class A operations/month. Small status/download read volumes should fit its included ten million Class B operations/month. Storage includes ten GB-month/month; excess Standard storage is $0.015/GB-month. These allowances are shared at account level, not reserved for this project.
 
 Workers Paid starts at $5/account/month. The collector and single small coordinator are expected to fit its included compute, request, and operational-storage allowances. There is no additional flat monthly fee per Worker or per Durable Object. Use the SQLite backend for new coordinator classes, bound state growth, and verify actual usage during the pilot. If the account already pays for Workers and has spare allowances, the incremental starting cost may be close to $0.
 

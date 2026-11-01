@@ -32,11 +32,15 @@ Monitor both recent archives and remaining budget, not just the last process inv
 
 1. Edit `capture-plan.json`: enable/cadence/phase, priority, selection, optional dataset cap, timeout/retry override, and health thresholds are independent per dataset.
 2. Run `npm run plan`; compare with a previous plan if useful. Review the changed daily volume and headroom. Defaults remain one request in flight, at least one-second spacing, and an 8,000/day cap including retries. A dataset cannot bypass global safety controls.
-3. For stop predictions, use an explicit fixed panel or a capped rotating roster. Obtain stop IDs from authenticated status or an archived topology. Unknown IDs are rejected at collection time; an empty list is not all stops. Stop polling remains off until explicitly enabled.
+3. For stop predictions, use the deployed monthly campaign, an explicit fixed panel, or a capped rotating roster. Obtain stop IDs from authenticated status or an archived topology. Unknown IDs are rejected at collection time; an empty list is not all stops. The deployed campaign polls one permanent reference and three monthly study stops every two minutes. See [CAMPAIGNS.md](CAMPAIGNS.md).
 4. Run `npm run check`, commit, push, and deploy. There is no automatic production deployment on push. Each new configuration is archived once with its SHA-256.
 5. Confirm the active plan hash and new next-due times. Old missed slots are not replayed. Runtime config is not editable through the public site.
 
 Some intervals are upper-bound estimates per UTC day because they do not divide 24 hours. Event-triggered full topology and retries consume the same daily headroom. A pending topology refresh is coalesced and waits out minimum spacing.
+
+## Verify prediction campaigns
+
+Run `npm run verify:campaign` with the configured Cloudflare account/API token. It downloads the private latest receipt, manifest, and each of four raw JSON responses, then checks roles and checksums. It works even when the dashboard password has been changed by the owner. Monthly panels and stable-code resolution are described in [CAMPAIGNS.md](CAMPAIGNS.md).
 
 ## Verify the running service
 

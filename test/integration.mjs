@@ -17,7 +17,7 @@ test('compiled Worker runs against real local SQLite Durable Object and R2 bindi
   bindings:{STATUS_TOKEN:token},
   outboundService:async request=>{
    const url=new URL(request.url);assert.equal(url.hostname,'swiv.citilink.cadavl.com');
-   const endpoint=url.pathname.split('/restWS')[1];assert(endpoint in files,'unexpected endpoint '+endpoint);
+   const endpoint=url.pathname.split('/restWS')[1];if(endpoint.startsWith('/horaires/pta/'))files[endpoint]='horaires_pta_273438.json';assert(endpoint in files,'unexpected endpoint '+endpoint);
    upstreamCalls.push(url.href);
    return new MFResponse(readFileSync(new URL('../api-discovery/raw/'+files[endpoint],import.meta.url)),{headers:{'Content-Type':'application/octet-stream'}});
   },

@@ -1,3 +1,4 @@
+import { buildStopIndex, resolveCampaign, type StopIndex } from './selection';
 import { IDS, estimatePlan, isDue, nextSlot, retryAfter, validatePlan, type DatasetId, type DatasetPlan, type Plan } from './plan';
 import { base64, jsonOptions, parseJson, pathFor, readBody, safeHeaders, sha256, stopRoster, structurallyValid, upstreamUrl, type Bucket } from './archive';
 
@@ -21,6 +22,7 @@ interface Outcome { expected: number; succeeded: number; skipped: string[] }
 interface Run {
   run_id: string; slot: number; started_at: number; plan_hash: string; lease_until: number;
   expected: Partial<Record<DatasetId, number>>; selected_stops: number[]; roster_reference?: string;
+  selection_context?: ReturnType<typeof resolveCampaign>['context'];
   attempts: Attempt[]; outcomes: Partial<Record<DatasetId,Outcome>>;
 }
 interface State {
@@ -28,7 +30,7 @@ interface State {
   config_error?: string; archive_error?: string; runtime_error?: string;
   budget: { day: string; total: number; optional: number; datasets: Partial<Record<DatasetId,number>> };
   last_request_at?: number; source_failures: number; cooldown_until: number; pause_seconds: number;
-  roster: number[]; roster_reference?: string; discovery_error?: string; cursor: number;
+  stop_index?: StopIndex; roster: number[]; roster_reference?: string; discovery_error?: string; cursor: number;
   source_version?: string; topology_pending: boolean; last_topology_at?: number;
   datasets: Record<DatasetId,Stats>; active_run?: Run; last_manifest?: string; recent_runs: { slot: number; key: string; status: string }[];
 }
@@ -68,6 +70,13 @@ export class Engine {
           if (id === 'full_topology' && prior?.enabled === false && this.plan.datasets[id].enabled && this.plan.datasets[id].triggers?.on_bootstrap) this.state.topology_pending = true;
         }
         // No scheduled-data backfill or R2 config pointer. New deployment owns this revision.
+      }
+      if(this.plan.datasets.stop_predictions.enabled && this.plan.datasets.stop_predictions.selection.mode==='campaign' && !this.state.stop_index){
+        try{
+          const object=this.state.roster_reference && this.bucket.get ? await this.bucket.get(this.state.roster_reference) : null;
+          if(object)this.state.stop_index=buildStopIndex(JSON.parse(await object.text()));
+        }catch{this.state.discovery_error='archived_topology_index_unavailable';}
+        if(!this.state.stop_index)this.state.topology_pending=true;
       }
       this.state.config_error = undefined;
     } catch (error) {
@@ -131,7 +140,12 @@ export class Engine {
         let targets: (number | undefined)[] = [undefined];
         let selectionError: string | undefined;
         if (id === 'stop_predictions') {
-          if (d.selection.mode === 'fixed') {
+          if(d.selection.mode==='campaign'){
+            try{
+              const selected=resolveCampaign(d.selection,slot,this.state.stop_index ?? {});
+              targets=selected.ids;run.selection_context=selected.context;
+            }catch(error){targets=[];selectionError=(error as Error).message;}
+          } else if (d.selection.mode === 'fixed') {
             targets = [...d.selection.stop_ids!];
             if (targets.some(s => !this.state.roster.includes(s!))) selectionError = 'unknown_stop_or_roster_unavailable';
           } else {
@@ -242,7 +256,7 @@ export class Engine {
       this.state.source_failures=0; this.state.cooldown_until=0; this.state.pause_seconds=0;
       if (result.ok && id === 'full_topology') {
         const roster = stopRoster(parsed.value);
-        if (roster.length) { this.state.roster=roster; this.state.roster_reference=key; this.state.discovery_error=undefined; }
+        if (roster.length) { this.state.roster=roster; this.state.roster_reference=key; this.state.stop_index=buildStopIndex(parsed.value); this.state.discovery_error=undefined; }
         else this.state.discovery_error='no_valid_stops_in_topology';
         this.state.last_topology_at=started; this.state.topology_pending=false;
       }
@@ -270,6 +284,9 @@ export class Engine {
     const key = `runs/v1/${pathFor(run.slot)}/${run.run_id}.json`;
     try {
       await this.bucket.put(key,JSON.stringify({ schema_version:1, collector_version:VERSION, ...run, finished_at:finished, completion_reason:reason, archive_error:this.state.archive_error ?? null },null,2),jsonOptions);
+      if(run.expected.stop_predictions){
+        await this.bucket.put('indexes/v1/stop_predictions/latest.json',JSON.stringify({schema_version:1,run_id:run.run_id,scheduled_at:run.slot,finished_at:finished,manifest_key:key,plan_hash:run.plan_hash,selection_context:run.selection_context,selected_stop_ids:run.selected_stops,outcome:run.outcomes.stop_predictions,attempts:run.attempts.filter(a=>a.dataset==='stop_predictions')},null,2),jsonOptions);
+      }
       this.state.last_manifest=key;
       for (const id of Object.keys(run.expected) as DatasetId[]) {
         const d = this.plan.datasets[id], stats = this.state.datasets[id];
@@ -290,7 +307,7 @@ export class Engine {
       this.state.recent_runs.unshift({slot:run.slot,key,status:reason === 'finished' && degraded ? 'degraded' : reason}); this.state.recent_runs=this.state.recent_runs.slice(0,20);
       this.state.runtime_error=undefined;
       this.state.active_run=undefined;
-    } catch { this.state.archive_error='manifest_archive_write_failed'; }
+    } catch { this.state.archive_error='run_metadata_archive_write_failed'; }
     await this.save();
   }
   async status() {

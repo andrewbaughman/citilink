@@ -60,7 +60,7 @@ export default {
       if(url.pathname==='/api/plan') return json(rawPlan);
       if(url.pathname==='/api/archive') {
         const key=url.searchParams.get('key') ?? '';
-        if(!/^(raw|diagnostics|runs|config|operations)\/[A-Za-z0-9_./-]+\.json$/.test(key) || key.includes('..') || key.length>512) return json({error:'invalid_object_key'},400);
+        if(!/^(raw|diagnostics|runs|config|operations|indexes)\/[A-Za-z0-9_./-]+\.json$/.test(key) || key.includes('..') || key.length>512) return json({error:'invalid_object_key'},400);
         const object=await env.ARCHIVE.get(key);
         if(!object) return json({error:'not_found'},404);
         return new Response(request.method==='HEAD'?null:object.body,{headers:{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Disposition':`attachment; filename="${key.split('/').at(-1)}"`}});

@@ -111,22 +111,58 @@
       }
     },
     "stop_predictions": {
-      "enabled": false,
+      "enabled": true,
       "tier": "optional",
       "priority": 20,
       "schedule": {
-        "interval_minutes": 5,
-        "phase_minute": 3
+        "interval_minutes": 2,
+        "phase_minute": 0
       },
       "selection": {
-        "mode": "fixed",
-        "stop_ids": [],
-        "max_stops_per_cycle": 10
+        "mode": "campaign",
+        "max_stops_per_cycle": 4,
+        "permanent_stop_code": "central-bay-N",
+        "starts_month": "2026-11",
+        "campaigns": [
+          {
+            "id": "calhoun-northbound",
+            "label": "8-Calhoun northbound study corridor",
+            "route_mnemo": "8C",
+            "direction": "northbound",
+            "study_stop_codes": [
+              "1174",
+              "844",
+              "1183"
+            ]
+          },
+          {
+            "id": "northcrest-southbound",
+            "label": "1-Northcrest southbound study corridor",
+            "route_mnemo": "1N",
+            "direction": "southbound",
+            "study_stop_codes": [
+              "302",
+              "1055",
+              "419"
+            ]
+          },
+          {
+            "id": "new-haven-westbound",
+            "label": "10-New Haven westbound study corridor",
+            "route_mnemo": "10NH",
+            "direction": "westbound",
+            "study_stop_codes": [
+              "v6m8",
+              "234",
+              "198"
+            ]
+          }
+        ]
       },
       "max_requests_per_utc_day": 4000,
       "health": {
         "required": true,
-        "minimum_coverage_percent": 95
+        "minimum_coverage_percent": 100
       }
     }
   }
