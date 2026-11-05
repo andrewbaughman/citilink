@@ -15,8 +15,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "citilink-analytics",
-    // Replace with the provisioned database ID before deploying. No remote database is created by local checks.
-    "database_id": "00000000-0000-0000-0000-000000000000",
+    "database_id": "de0aad33-fd19-49af-bf68-eabbf7029882",
     "migrations_dir": "migrations/analytics"
   }],
   "observability": { "enabled": true, "head_sampling_rate": 0.1, "traces": { "enabled": true } }
