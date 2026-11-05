@@ -1,0 +1,128 @@
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const number = value => Number(value || 0).toLocaleString('en-US');
+  const day = value => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Indiana/Indianapolis', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(value);
+    return ['year', 'month', 'day'].map(key => parts.find(p => p.type === key).value).join('-');
+  };
+  const date = (value, clock = true) => value ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/Indiana/Indianapolis', month: 'short', day: 'numeric', ...(clock ? { hour: 'numeric', minute: '2-digit' } : {}) }).format(value) : 'Not yet';
+  const element = (tag, text, className) => { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; };
+  let status, starters = [], scheduleDirty = false, datesSet = false, busy = false, lastQuery = null, view = 'overview', lastStatusCheck = 0;
+  function notice(message, success = false) { $('notice').textContent = message; $('notice').className = success ? 'success' : ''; $('notice').hidden = !message; }
+  async function api(path, options = {}) {
+    const response = await fetch(path, { ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } });
+    if (response.status === 401) { location.assign('/?expired=1'); throw Error('Your session expired. Sign in again.'); }
+    const value = await response.json(); if (!response.ok) throw Error(value.error || 'Request failed'); return value;
+  }
+  function setView(next) {
+    view = next; $('overview').hidden = next !== 'overview'; $('workspace').hidden = next === 'overview'; $('explore-filters').hidden = next === 'sql';
+    document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.view === next)));
+  }
+  function queryChanged() { $('export-csv').disabled = busy || !lastQuery || $('sql-input').value !== lastQuery; }
+  function filterVisibility() {
+    const id = $('starter-select').value;
+    $('route-filter').hidden = id === 'coverage'; $('vehicle-filter').hidden = !['vehicles', 'delay', 'quality'].includes(id); $('stop-filter').hidden = id !== 'predictions'; $('visibility-filter').hidden = ['coverage', 'predictions'].includes(id);
+    $('starter-description').textContent = starters.find(s => s.id === id)?.description || '';
+  }
+  async function loadStarter() {
+    filterVisibility();
+    const params = new URLSearchParams({ name: $('starter-select').value, from: $('date-from').value, to: $('date-to').value, route_id: $('route-id').value, vehicle_id: $('vehicle-id').value, stop_id: $('stop-id').value, all_vehicles: String($('all-vehicles').checked) });
+    const result = await api('/api/analysis/starter?' + params); $('sql-input').value = result.sql; queryChanged();
+  }
+  function drawStatus(value) {
+    status = value;
+    const totals = value.totals || [], vehicles = totals.find(t => t.dataset === 'vehicles'), predictions = totals.find(t => t.dataset === 'stop_predictions');
+    $('vehicle-count').textContent = number(vehicles?.rows); $('prediction-count').textContent = number(predictions?.rows);
+    const times = totals.filter(t => t.earliest_at != null), first = Math.min(...times.map(t => t.earliest_at)), last = Math.max(...times.map(t => t.latest_at));
+    $('history-range').textContent = times.length ? date(first, false) + ' – ' + date(last, false) : 'No imports yet';
+    $('last-success').textContent = date(value.last_success_at);
+    $('next-run').textContent = value.next_scheduled_at ? 'Next: ' + date(value.next_scheduled_at) : 'Daily updates disabled';
+    $('freshness').textContent = value.settings.daily_enabled ? 'Daily imports on' : 'Daily imports off';
+    if (!scheduleDirty) { $('daily-enabled').checked = value.settings.daily_enabled; $('daily-time').value = value.settings.daily_time; }
+    const job = value.job, running = job?.status === 'running', stopping = job?.status === 'stopped' && value.batch_active;
+    const labels = { running: 'Importing', stopped: stopping ? 'Finishing batch' : 'Paused', completed: 'Up to date', completed_with_errors: 'Completed with errors', failed: 'Needs attention' };
+    $('job-state').textContent = labels[job?.status] || 'Ready to import'; $('job-state').className = 'pill' + (running ? ' running' : ['failed', 'completed_with_errors'].includes(job?.status) ? ' error' : '');
+    $('start-import').disabled = running || value.batch_active; $('stop-import').disabled = !running;
+    $('start-import').textContent = ['stopped', 'failed'].includes(job?.status) ? 'Resume import ↗' : 'Import missing data ↗';
+    $('job-summary').textContent = job ? `${number(job.objects_imported)} source objects · ${number(job.rows_imported)} analysis records loaded in this scan` : 'Start by importing your collected history.';
+    $('job-detail').textContent = stopping ? 'Finishing the current batch before pausing.' : job?.manifest ? 'Current manifest: ' + job.manifest : job?.status === 'completed' ? 'All eligible history in this scan is imported. Run again to pick up new data.' : job?.errors ? `${number(job.errors)} errors in this scan. Run another scan to retry incomplete imports.` : 'Progress is saved between batches. Your R2 collection continues independently.';
+    const errors = [...(job?.recent_errors || []), ...(value.errors || []).map(e => ({ key: e.object_key, message: e.error }))];
+    const unique = Array.from(new Map(errors.map(e => [e.key + e.message, e])).values()).slice(-20);
+    $('errors-section').hidden = !unique.length; $('errors-title').textContent = `Import errors (${unique.length}${unique.length === 20 ? ', latest available' : ''})`;
+    $('error-list').replaceChildren(...unique.map(e => element('li', e.key + ': ' + e.message)));
+    const rows = totals.map(t => {
+      const row = element('tr');
+      const metadata = ['topology_updates', 'config_version', 'service_messages'].includes(t.dataset);
+      [t.dataset, number(t.objects), metadata ? 'Metadata only' : number(t.rows), date(t.earliest_at), date(t.latest_at)].forEach(text => row.append(element('td', text))); return row;
+    });
+    $('dataset-rows').replaceChildren(...rows); $('empty-history').hidden = rows.length > 0;
+    $('updated-at').textContent = 'Status checked ' + date(Date.now());
+    if (!datesSet && times.length) { $('date-from').value = day(last); $('date-to').value = day(last); datesSet = true; }
+  }
+  async function refresh() { drawStatus(await api('/api/imports')); lastStatusCheck = Date.now(); }
+  function drawSchema(tables) {
+    $('schema-list').replaceChildren(...tables.map(table => {
+      const details = element('details'), summary = element('summary', table.name); details.append(summary, element('p', table.description));
+      for (const column of table.columns) {
+        const row = element('div', undefined, 'schema-column'); row.append(element('code', column.name), element('small', column.type || 'derived'), element('p', column.description)); details.append(row);
+      }
+      return details;
+    }));
+  }
+  async function run() {
+    if (busy) return;
+    const sql = $('sql-input').value; busy = true; $('run-query').disabled = true; $('run-query').textContent = 'Running…'; queryChanged(); $('query-error').hidden = true;
+    try {
+      const result = await api('/api/analysis/query', { method: 'POST', body: JSON.stringify({ sql }) });
+      const table = element('table'), head = element('thead'), header = element('tr'), body = element('tbody');
+      result.columns.forEach(name => header.append(element('th', name))); head.append(header);
+      result.rows.forEach(values => { const row = element('tr'); values.forEach(value => { const text = value == null ? 'NULL' : typeof value === 'object' ? JSON.stringify(value) : String(value); const cell = element('td', text); cell.title = text.slice(0, 4000); row.append(cell); }); body.append(row); });
+      table.append(head, body); $('results').replaceChildren(table); $('result-empty').hidden = result.rows.length !== 0;
+      $('result-count').textContent = number(result.rows.length) + (result.truncated ? '+' : '');
+      $('result-status').textContent = result.truncated ? `Preview capped at ${number(result.row_limit)} rows. CSV runs the full query up to its separate export limit.` : `${number(result.rows.length)} rows · ${number(result.duration_ms)} ms`;
+      lastQuery = sql;
+    } catch (error) { $('query-error').textContent = error.message; $('query-error').hidden = false; }
+    finally { busy = false; $('run-query').disabled = false; $('run-query').textContent = 'Run query →'; queryChanged(); }
+  }
+  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
+  $('filter-form').addEventListener('submit', event => { event.preventDefault(); loadStarter().catch(error => notice(error.message)); });
+  $('starter-select').addEventListener('change', () => loadStarter().catch(error => notice(error.message)));
+  $('sql-input').addEventListener('input', queryChanged);
+  $('sql-input').addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); run(); } if (event.key === 'Tab') { event.preventDefault(); const input = event.currentTarget; input.setRangeText('  ', input.selectionStart, input.selectionEnd, 'end'); queryChanged(); } });
+  $('run-query').addEventListener('click', run);
+  $('export-csv').addEventListener('click', async () => {
+    if (!lastQuery || busy || $('sql-input').value !== lastQuery) return;
+    busy = true; $('run-query').disabled = true; $('export-csv').textContent = 'Exporting…'; queryChanged();
+    try {
+      const response = await fetch('/api/analysis/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sql: lastQuery }) });
+      if (response.status === 401) { location.assign('/?expired=1'); throw Error('Your session expired.'); }
+      if (!response.ok) throw Error((await response.json()).error || 'Export failed');
+      const blob = await response.blob(), url = URL.createObjectURL(blob), link = element('a'); link.href = url; link.download = 'citilink-query.csv'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const capped = response.headers.get('X-Result-Truncated') === 'true', count = response.headers.get('X-Result-Rows');
+      notice(capped ? `CSV downloaded: ${number(count)} rows. Export was capped at 10,000 rows; narrow the query to get a complete result.` : `CSV downloaded: ${number(count)} rows. Formula-like text is escaped for spreadsheet safety.`, !capped);
+    } catch (error) { notice(error.message); }
+    finally { busy = false; $('run-query').disabled = false; $('export-csv').textContent = 'Export query CSV ↓'; queryChanged(); }
+  });
+  for (const id of ['daily-enabled', 'daily-time']) $(id).addEventListener('input', () => { scheduleDirty = true; $('save-schedule').disabled = false; });
+  $('schedule-form').addEventListener('submit', async event => {
+    event.preventDefault(); $('save-schedule').disabled = true;
+    try { const value = await api('/api/imports/settings', { method: 'PUT', body: JSON.stringify({ daily_enabled: $('daily-enabled').checked, daily_time: $('daily-time').value, timezone: 'America/Indiana/Indianapolis' }) }); scheduleDirty = false; drawStatus(value); notice('Daily import schedule saved.', true); }
+    catch (error) { notice(error.message); $('save-schedule').disabled = false; }
+  });
+  for (const [id, action] of [['start-import', 'start'], ['stop-import', 'stop']]) $(id).addEventListener('click', async () => {
+    $(id).disabled = true;
+    try { drawStatus(await api('/api/imports/' + action, { method: 'POST' })); notice(action === 'start' ? 'Import started. You can leave this page; progress is saved.' : 'Stop requested. The current batch will finish before pausing.', true); }
+    catch (error) { notice(error.message); refresh().catch(() => {}); }
+  });
+  $('refresh-status').addEventListener('click', () => refresh().catch(error => notice(error.message)));
+  async function init() {
+    try {
+      const [, catalog] = await Promise.all([refresh(), api('/api/analysis/schema')]); starters = catalog.starters; drawSchema(catalog.tables);
+      $('starter-select').replaceChildren(...starters.map(item => { const option = element('option', item.name); option.value = item.id; return option; }));
+      $('starter-cards').replaceChildren(...starters.slice(0, 4).map(item => { const button = element('button', undefined, 'starter-card'), text = element('span'); button.type = 'button'; text.append(element('strong', item.name), element('small', item.description)); button.append(text, element('span', '↗')); button.addEventListener('click', () => { setView('explore'); $('starter-select').value = item.id; loadStarter().then(run).catch(error => notice(error.message)); }); return button; }));
+      await loadStarter();
+    } catch (error) { notice(error.message); }
+  }
+  init(); setInterval(() => { if (!document.hidden && (status?.job?.status === 'running' || status?.batch_active || Date.now() - lastStatusCheck >= 60000)) refresh().catch(error => notice('Status refresh failed: ' + error.message)); }, 5000);
+})();
