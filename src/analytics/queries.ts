@@ -1,7 +1,7 @@
 import library from 'node-sql-parser/build/sqlite.js';
 import { record } from './normalize';
 
-export const TABLES=['analysis_vehicles','analysis_predictions','analysis_routes','analysis_stops','analysis_reference_captures','analysis_collections','analysis_runs'] as const;
+export const TABLES=['analysis_vehicles','analysis_predictions','analysis_routes','analysis_stops','analysis_reference_captures','analysis_collections','analysis_runs','analysis_stop_visits'] as const;
 export const PREVIEW_LIMIT=500,EXPORT_LIMIT=10000,MAX_BYTES=8*1024*1024;
 const functions=new Set(('abs avg cast ceil ceiling char coalesce concat concat_ws count cume_dist date datetime dense_rank exp first_value floor format glob group_concat hex if ifnull iif instr json json_array json_array_length json_each json_error_position json_extract json_group_array json_group_object json_insert json_object json_patch json_pretty json_quote json_remove json_replace json_set json_tree json_type json_valid jsonb jsonb_array jsonb_extract jsonb_group_array jsonb_group_object jsonb_insert jsonb_object jsonb_patch jsonb_remove jsonb_replace jsonb_set julianday lag last_value lead length likelihood likely ln log log10 log2 lower ltrim max min mod nth_value ntile nullif octet_length percent_rank pi pow power printf quote radians rank replace round row_number rtrim sign sin cos tan sqrt strftime string_agg substr substring sum time timediff total trim trunc typeof unhex unicode unixepoch unlikely upper current_date current_time current_timestamp').split(' '));
 const parser=new library.Parser();

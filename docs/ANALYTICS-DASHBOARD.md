@@ -18,6 +18,10 @@ from step 2; all routine import operations are available in the interface.
 - **SQL editor:** custom read-only queries with a schema browser and field
   descriptions that preserve the provisional French API interpretation. Results
   are scrollable tables; Ctrl/Command + Enter runs the query.
+- **Stop visits:** investigate one local day, route and stop, with optional
+  destination filtering. Replay observed vehicle positions, inspect prediction
+  revisions and original French fields, and save association reviews. See
+  [STOP-VISITS.md](STOP-VISITS.md) for methodology and limits.
 - **CSV:** reruns the successful query with a larger limit than the preview.
   Editing the query disables export until it is run again. The interface reports
   export caps explicitly. Importing new data between preview and export can
@@ -35,7 +39,7 @@ CTEs, subqueries, and window functions within the supported SQLite parser syntax
 Unknown extension functions are not permitted. Parsing errors are shown in the
 results area rather than treated as empty results.
 
-The seven analysis views are:
+The eight analysis views are:
 
 | View | Contents |
 | --- | --- |
@@ -46,6 +50,7 @@ The seven analysis views are:
 | `analysis_reference_captures` | Reference hashes and original capture times for historical joins |
 | `analysis_collections` | Collection results, including successful empty responses and failures |
 | `analysis_runs` | Expected/succeeded coverage, skipped reasons, and study selection context |
+| `analysis_stop_visits` | Generated candidate visits, evidence, method version and owner reviews |
 
 For historical reference joins, select the reference capture at or before the
 observation time, then join its hash to the route or stop version. Do not choose
@@ -100,7 +105,7 @@ local archive data has been supplied. Set the local secret through an ignored
 `.dev.vars` file or the project's supported secret mechanism.
 
 For a new environment, production setup requires the dedicated D1 ID in
-`wrangler.analytics.jsonc`, **both** SQL migrations, and `IMPORT_TOKEN`. Configure
+`wrangler.analytics.jsonc`, **all three** SQL migrations, and `IMPORT_TOKEN`. Configure
 the intended Access policy before sharing the dashboard URL. The existing
 collector's deployment script remains unchanged; deploy the analytics Worker
 with its explicit config. No import starts merely from deploying it.
