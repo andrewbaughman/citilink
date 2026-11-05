@@ -1,7 +1,13 @@
 import { DurableObject } from 'cloudflare:workers';
 import { ImportRepository, defaultState, startJob, step, addError, dailyDue, localClock, nextDaily, validateSettings, type ImportState } from './importer';
+import {authenticate,bodyText,tokenMatches,sessionCookie,clearCookie,type AuthEnv} from './auth';
+import {query,csv,PREVIEW_LIMIT,EXPORT_LIMIT} from './queries';
+import {schema,starter,STARTERS} from './catalog';
+import dashboard from './ui/dashboard.html';
+import dashboardCss from './ui/dashboard.css';
+import dashboardJs from './ui/dashboard.js.txt';
 
-type Bindings = AnalyticsEnv & { IMPORT_TOKEN?:string };
+type Bindings = AnalyticsEnv & AuthEnv;
 export class ImportCoordinator extends DurableObject<Bindings> {
   private state:ImportState;
   private busy=false;
@@ -65,39 +71,63 @@ export class ImportCoordinator extends DurableObject<Bindings> {
   }
 }
 const response=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
-async function authorized(request:Request,token:string) {
-  const supplied=request.headers.get('Authorization');
-  if(!supplied?.startsWith('Bearer '))return false;
-  const enc=new TextEncoder();
-  const a=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(supplied.slice(7))));
-  const b=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(token)));
-  let different=0;for(let i=0;i<a.length;i++)different|=a[i]!^b[i]!;
-  return different===0;
-}
-async function smallJson(request:Request) {
+async function jsonBody(request:Request,limit=65536):Promise<unknown> {
   if(!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json'))throw Error('Expected application/json');
-  const reader=request.body?.getReader();if(!reader)throw Error('Missing JSON body');
-  let length=0;const chunks:Uint8Array[]=[];
-  for(;;) {const item=await reader.read();if(item.done)break;length+=item.value.length;if(length>4096){await reader.cancel();throw Error('Settings body too large');}chunks.push(item.value);}
-  const bytes=new Uint8Array(length);let at=0;for(const chunk of chunks){bytes.set(chunk,at);at+=chunk.length;}
-  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+  return JSON.parse(await bodyText(request,limit)) as unknown;
+}
+const pageHeaders={
+  'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',
+  'Content-Security-Policy':"default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+  'Referrer-Policy':'no-referrer',
+};
+function login(failed=false) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Citilink</title><link rel="stylesheet" href="/assets/dashboard.css"></head><body><main class="login"><section class="card"><div class="brand"><span class="brand-mark">C<span>↗</span></span><span>Citilink<small>DATA WORKSPACE</small></span></div><h1>Your data workspace.</h1><p class="muted">Sign in to explore the archive and manage imports.</p>${failed?'<p role="alert">The password was not accepted. Try again.</p>':''}<form method="post" action="/login"><label for="password">Administrator password<input id="password" name="password" type="password" autocomplete="current-password" required maxlength="4096"></label><button class="primary" type="submit">Sign in →</button></form><p class="fineprint">Access is private. Your original files stay in R2.</p></section></main></body></html>`,{status:failed?401:200,headers:pageHeaders});
 }
 export default {
   async scheduled(event:ScheduledController,env:Bindings,ctx:ExecutionContext) {
     ctx.waitUntil(env.IMPORTER.getByName('citilink-history').tick(event.scheduledTime));
   },
   async fetch(request:Request,env:Bindings):Promise<Response> {
+    const url=new URL(request.url);
+    if(request.method==='GET' && url.pathname==='/assets/dashboard.css')return new Response(dashboardCss,{headers:{'Content-Type':'text/css;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
+    if(request.method==='GET' && url.pathname==='/assets/dashboard.js')return new Response(dashboardJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(!env.IMPORT_TOKEN || env.IMPORT_TOKEN.length<24)return response({error:'import_auth_not_configured'},503);
-    if(!await authorized(request,env.IMPORT_TOKEN))return response({error:'unauthorized'},401);
-    const url=new URL(request.url),importer=env.IMPORTER.getByName('citilink-history');
+    if(url.pathname==='/login' && request.method==='POST') {
+      if(request.headers.get('Origin')!==url.origin)return response({error:'origin_not_allowed'},403);
+      try {
+        const form=new URLSearchParams(await bodyText(request,8192)),password=form.get('password')??'';
+        if(!await tokenMatches(password,env.IMPORT_TOKEN))return login(true);
+        return new Response(null,{status:303,headers:{'Location':'/','Set-Cookie':await sessionCookie(env.IMPORT_TOKEN),'Cache-Control':'no-store'}});
+      }catch{return login(true);}
+    }
+    const identity=await authenticate(request,env);
+    if(!identity)return url.pathname==='/' && request.method==='GET'?login():response({error:'unauthorized'},401);
+    if(!['GET','HEAD'].includes(request.method) && identity!=='bearer' && request.headers.get('Origin')!==url.origin)return response({error:'origin_not_allowed'},403);
+    const importer=env.IMPORTER.getByName('citilink-history');
     try {
+      if(url.pathname==='/' && request.method==='GET')return new Response(dashboard,{headers:pageHeaders});
+      if(url.pathname==='/logout' && request.method==='POST')return new Response(null,{status:303,headers:{'Location':identity==='access'?`https://${env.ACCESS_TEAM_DOMAIN}/cdn-cgi/access/logout`:'/','Set-Cookie':clearCookie(),'Cache-Control':'no-store'}});
       if(url.pathname==='/api/imports' && request.method==='GET')return response(await importer.status());
       if(url.pathname==='/api/imports/start' && request.method==='POST')return response(await importer.start(),202);
       if(url.pathname==='/api/imports/stop' && request.method==='POST')return response(await importer.stop());
       if(url.pathname==='/api/imports/settings' && request.method==='PUT') {
         let settings;
-        try {settings=validateSettings(await smallJson(request));}catch(error){return response({error:error instanceof Error?error.message:'Invalid settings'},400);}
+        try {settings=validateSettings(await jsonBody(request,4096));}catch(error){return response({error:error instanceof Error?error.message:'Invalid settings'},400);}
         return response(await importer.settings(settings));
+      }
+      if(url.pathname==='/api/analysis/schema' && request.method==='GET')return response({tables:await schema(env.DB),starters:STARTERS});
+      if(url.pathname==='/api/analysis/starter' && request.method==='GET') {
+        try{return response({sql:starter(url.searchParams)});}catch(error){return response({error:error instanceof Error?error.message:'Invalid filters'},400);}
+      }
+      if(['/api/analysis/query','/api/analysis/export'].includes(url.pathname) && request.method==='POST') {
+        try {
+          const value=await jsonBody(request);
+          if(!value || typeof value!=='object' || Array.isArray(value))throw Error('Expected a SQL query');
+          const exporting=url.pathname.endsWith('/export');
+          const result=await query(env.DB,(value as {sql?:unknown}).sql,exporting?EXPORT_LIMIT:PREVIEW_LIMIT);
+          if(!exporting)return response(result);
+          return new Response(csv(result.columns,result.rows),{headers:{'Content-Type':'text/csv;charset=utf-8','Content-Disposition':'attachment; filename="citilink-query.csv"','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Result-Truncated':String(result.truncated),'X-Result-Rows':String(result.rows.length),'X-Export-Row-Limit':String(EXPORT_LIMIT)}});
+        }catch(error){return response({error:error instanceof Error?error.message.slice(0,500):'Query failed'},400);}
       }
       return response({error:'not_found'},404);
     } catch {return response({error:'import_service_unavailable'},503);}

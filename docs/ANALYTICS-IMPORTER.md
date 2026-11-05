@@ -5,7 +5,7 @@ existing archive into D1. Its settings and progress live in a SQLite Durable
 Object dedicated to coordinating this archive's imports. It only lists and reads
 R2; the collector Worker and its configuration remain unchanged.
 
-Daily imports start **disabled**. The dashboard in step 3 will use the API below
+Daily imports start **disabled**. The dashboard uses the API below
 for every routine operation. No production backfill or schedule is enabled by
 building or testing this code.
 
@@ -72,7 +72,7 @@ or reprocessing operation.
 All routes require `Authorization: Bearer <IMPORT_TOKEN>`. Configure a secret of
 at least 24 characters; requests fail closed without it. Do not put this secret
 in a public browser bundle. The dashboard's server-side authentication layer
-will mediate access in step 3.
+mediates access; see ANALYTICS-DASHBOARD.md.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -114,8 +114,8 @@ The checked-in D1 ID is an explicit placeholder. Before a production release:
 
 The production Worker compatibility date is `2026-10-30`, the newest supported
 date in the project's pinned local test runtime. No dependencies were upgraded.
-Cloudflare Access and the dashboard/SQL/CSV interface are step 3, not part of this
-backend release. Hosted D1 throughput remains to be measured before a full backfill.
+The dashboard, SQL editor, CSV export, and Access integration are documented in
+ANALYTICS-DASHBOARD.md. Hosted D1 throughput remains to be measured before a full backfill.
 
 ## Verification
 

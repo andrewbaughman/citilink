@@ -107,3 +107,10 @@ The current deployment uses **Workers Free**, with no paid plan purchased. Initi
 The implementation is saved on GitHub, all 31 automated tests passed, and the Worker/private bucket/minute schedule are deployed. R2 activation is complete. The core feeds and newly enabled prediction panel have passed live archival checks. Current prediction responses are empty; actual forecast/departure matching still needs a service-hours pilot. The GitHub monitor passed a real external health check, an intentional notification-test failure, and a subsequent normal recovery check. Notification email remains dependent on GitHub settings and has not been confirmed in an inbox. A full 24-hour pilot is still pending. See [deployment status](docs/DEPLOYMENT.md) for current evidence.
 
 The uploaded discovery material and browser examples are preserved in [api-discovery](api-discovery), [poc](poc), and [webapp](webapp). They are reference tools, not production collector dependencies. Original project notes are in [docs/reference-project.md](docs/reference-project.md). Uploaded cookies and Git metadata were deliberately excluded.
+
+## Analysis workspace
+
+The separate analytics Worker provides dashboard-controlled backfills and daily imports,
+an open read-only SQL editor, a field dictionary, and CSV export. Daily imports default
+to disabled. See [dashboard documentation](docs/ANALYTICS-DASHBOARD.md) and
+[importer documentation](docs/ANALYTICS-IMPORTER.md) for setup and controls.

@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-30",
   "workers_dev": true,
   "preview_urls": false,
+  "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": true }],
   "triggers": { "crons": ["* * * * *"] },
   "durable_objects": {
     "bindings": [{ "name": "IMPORTER", "class_name": "ImportCoordinator" }]
