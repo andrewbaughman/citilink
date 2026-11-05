@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "citilink-analytics",
+  "main": "src/analytics/index.ts",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": true,
+  "preview_urls": false,
+  "triggers": { "crons": ["* * * * *"] },
+  "durable_objects": {
+    "bindings": [{ "name": "IMPORTER", "class_name": "ImportCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ImportCoordinator"] }],
+  "r2_buckets": [{ "binding": "ARCHIVE", "bucket_name": "citilink-history" }],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "citilink-analytics",
+    // Replace with the provisioned database ID before deploying. No remote database is created by local checks.
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "migrations/analytics"
+  }],
+  "observability": { "enabled": true, "head_sampling_rate": 0.1, "traces": { "enabled": true } }
+}
