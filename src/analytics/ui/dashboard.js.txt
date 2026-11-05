@@ -16,7 +16,8 @@
     const value = await response.json(); if (!response.ok) throw Error(value.error || 'Request failed'); return value;
   }
   function setView(next) {
-    view = next; $('overview').hidden = next !== 'overview'; $('workspace').hidden = next === 'overview'; $('explore-filters').hidden = next === 'sql';
+    view = next; $('overview').hidden = next !== 'overview'; $('workspace').hidden = !['explore','sql'].includes(next); $('explore-filters').hidden = next === 'sql';
+    $('visits').hidden = next !== 'visits';
     document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.view === next)));
   }
   function queryChanged() { $('export-csv').disabled = busy || !lastQuery || $('sql-input').value !== lastQuery; }

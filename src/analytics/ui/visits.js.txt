@@ -1,0 +1,121 @@
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id), node = (tag, text) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; return n; };
+  const time = at => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Indiana/Indianapolis', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(at);
+  const clock = seconds => seconds == null ? 'unavailable' : `${String(Math.floor(seconds / 3600)).padStart(2, '0')}:${String(Math.floor(seconds % 3600 / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  let options, study, visit, frames = [], timer, loaded = false, generation = 0;
+  async function api(path, method = 'GET', body) {
+    const response = await fetch(path, { method, ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}) });
+    if (response.status === 401) { location.assign('/?expired=1'); throw Error('Sign in again.'); }
+    const data = await response.json(); if (!response.ok) throw Error(data.error || 'Request failed'); return data;
+  }
+  function option(value, label) { const o = node('option', label); o.value = String(value); return o; }
+  function stops() {
+    const available = options.stops.filter(s => s.route_ids.includes(Number($('visit-route').value)));
+    available.sort((a, b) => Number(options.prediction_stop_ids?.includes(b.stop_id)) - Number(options.prediction_stop_ids?.includes(a.stop_id)) || a.name.localeCompare(b.name));
+    $('visit-stop').replaceChildren(...available.map(s => option(s.stop_id, s.name + (options.prediction_stop_ids?.includes(s.stop_id) ? ' · predictions collected' : ''))));
+    $('visit-direction').replaceChildren(option('', 'Any direction'));
+    $('visit-load').disabled = !available.length;
+  }
+  async function loadOptions() {
+    const request = ++generation;
+    const result = await api('/api/visits/options' + ($('visit-date').value ? '?date=' + encodeURIComponent($('visit-date').value) : ''));
+    if (request !== generation) return;
+    options = result; if (result.date) $('visit-date').value = result.date;
+    const route = $('visit-route').value;
+    $('visit-route').replaceChildren(...result.routes.map(r => option(r.route_id, `${r.short_code || ''} · ${r.name}`)));
+    if (result.routes.some(r => String(r.route_id) === route)) $('visit-route').value = route;
+    else { const calhoun = result.routes.find(r => r.short_code === '8C'); if (calhoun) $('visit-route').value = String(calhoun.route_id); }
+    $('visit-options-note').textContent = result.warning || 'Stops with collected predictions are listed first. All times are Indianapolis local time.';
+    stops(); loaded = true;
+  }
+  document.querySelector('[data-view="visits"]').addEventListener('click', () => { if (!loaded) loadOptions().catch(e => { $('visit-message').textContent = e.message; }); });
+  $('visit-date').addEventListener('change', () => loadOptions().catch(e => { $('visit-message').textContent = e.message; }));
+  $('visit-route').addEventListener('change', stops);
+  $('visit-form').addEventListener('submit', async event => {
+    event.preventDefault(); $('visit-load').disabled = true; $('visit-message').textContent = 'Building the study from imported observations…';
+    try {
+      const result = await api('/api/visits/investigate', 'POST', { date: $('visit-date').value, route_id: Number($('visit-route').value), stop_id: Number($('visit-stop').value), direction: $('visit-direction').value || null });
+      stopPlayback(); study = result; $('visit-study').hidden = false;
+      const selected = $('visit-direction').value; $('visit-direction').replaceChildren(option('', 'Any direction'), ...study.directions.map(d => option(d, d))); $('visit-direction').value = selected;
+      $('visit-message').textContent = `${study.visits.length} candidate visits · ${study.series.length} prediction series. ${study.disclaimer}`;
+      $('visit-warnings').textContent = study.warnings.join(' ') || 'Method v1: 60 m near-stop radius, 40 m crossing tolerance, maximum 150-second observation gap. No automatic accuracy scores.';
+      $('visit-list').replaceChildren(...study.visits.map(v => {
+        const button = node('button'); button.type = 'button'; button.className = 'starter-card'; button.dataset.visitId = v.id;
+        const text = node('span'); text.append(node('strong', `${time(v.arrival_start)} · vehicle ${v.vehicle_id}`), node('small', `${v.destination || 'Unknown destination'} · ${v.classification.replaceAll('_', ' ')}`)); button.append(text, node('span', '↗')); button.addEventListener('click', () => selectVisit(v)); return button;
+      }));
+      if (study.visits.length) selectVisit(study.visits[0]); else { $('visit-list').append(node('p', 'No near-stop candidates found for these filters. Missing data or sparse sampling does not prove no service occurred.')); document.querySelector('.visit-detail').hidden = true; }
+    } catch (error) { $('visit-message').textContent = error.message; }
+    finally { $('visit-load').disabled = false; }
+  });
+  function stopPlayback() { if (timer) clearInterval(timer); timer = null; $('visit-play').textContent = 'Play'; }
+  function selectVisit(value) {
+    stopPlayback(); visit = value; document.querySelector('.visit-detail').hidden = false;
+    $('visit-confidence').textContent = `${visit.classification.replaceAll('_', ' ')} · ${visit.confidence} confidence`;
+    $('visit-window').textContent = `Inferred proximity arrival: ${time(visit.arrival_start)}–${time(visit.arrival_end)} · closest path distance ${visit.closest_m} m`;
+    $('visit-reasons').replaceChildren(...(visit.reasons.length ? visit.reasons : ['Approach/departure, heading and local route geometry support this candidate. It remains unverified.']).map(reason => node('li', reason)));
+    const annotation = study.annotations.find(a => a.visit_id === visit.id);
+    $('visit-series').replaceChildren(option('', 'Choose a candidate series'), ...visit.candidates.map(c => { const s = study.series.find(s => s.key === c.key); return option(c.key, `${s.prediction_id} · ${s.destination || 'Unknown'}${c.eligible ? '' : ' · flagged'}`); }));
+    $('visit-series').value = annotation?.prediction_key || visit.matched_key || visit.candidates[0]?.key || '';
+    $('visit-note').value = annotation?.note || ''; $('visit-decision').value = annotation?.decision || 'unreviewed'; $('visit-note-status').textContent = '';
+    frames = study.movement.filter(p => p.vehicle_id === visit.vehicle_id && p.observed_at >= visit.arrival_start - 10 * 60000 && p.observed_at <= visit.arrival_end + 10 * 60000 && p.destination_raw === visit.destination);
+    if (!frames.length) frames = visit.positions;
+    $('visit-time').max = String(Math.max(0, frames.length - 1)); $('visit-time').value = String(Math.max(0, frames.findIndex(p => p.observed_at >= visit.estimated_at)));
+    drawMap(); drawTimeline(); evidence();
+  }
+  function svg(parent, tag, attributes = {}, text) { const n = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [key, value] of Object.entries(attributes)) n.setAttribute(key, String(value)); if (text !== undefined) n.textContent = text; parent.append(n); return n; }
+  function drawMap() {
+    if (!visit) return;
+    const map = $('visit-map'); map.replaceChildren();
+    const origin = study.stop, x = p => (p.longitude - origin.longitude) * 111320 * Math.cos(origin.latitude * Math.PI / 180), y = p => (p.latitude - origin.latitude) * 111320;
+    const extent = Math.max(350, ...visit.positions.map(p => Math.max(Math.abs(x(p)), Math.abs(y(p))))) + 100;
+    const scale = 140 / extent, project = p => [350 + x(p) * scale, 170 - y(p) * scale];
+    svg(map, 'rect', { width: 700, height: 340, fill: '#f5f8fa' });
+    for (let i = 50; i < 700; i += 50) svg(map, 'line', { x1: i, x2: i, y1: 0, y2: 340, stroke: '#e4ebef' });
+    for (const line of study.geometry) svg(map, 'polyline', { points: line.map(p => project(p).join(',')).join(' '), fill: 'none', stroke: '#b4c0ca', 'stroke-width': 3 });
+    for (let i = 1; i < frames.length; i++) if (frames[i].observed_at - frames[i - 1].observed_at <= 150000) svg(map, 'polyline', { points: [frames[i - 1], frames[i]].map(p => project(p).join(',')).join(' '), fill: 'none', stroke: '#79a7e7', 'stroke-width': 2 });
+    for (const p of frames) { const [cx, cy] = project(p); svg(map, 'circle', { cx, cy, r: 3, fill: '#4678b5' }); }
+    svg(map, 'circle', { cx: 350, cy: 170, r: 7, fill: '#d47a29', stroke: '#fff', 'stroke-width': 2 });
+    svg(map, 'text', { x: 361, y: 161, fill: '#8b551c', 'font-size': 11 }, study.stop.name);
+    const current = frames[Number($('visit-time').value)] || frames[0];
+    if (current) { const [cx, cy] = project(current); svg(map, 'circle', { cx, cy, r: 7, fill: '#145bce', stroke: '#fff', 'stroke-width': 2 }); if (current.heading_raw != null) svg(map, 'line', { x1: cx, y1: cy, x2: cx + 18 * Math.sin(current.heading_raw * Math.PI / 180), y2: cy - 18 * Math.cos(current.heading_raw * Math.PI / 180), stroke: '#145bce', 'stroke-width': 3 }); $('visit-time-label').textContent = time(current.observed_at); }
+    svg(map, 'text', { x: 670, y: 22, fill: '#57758b', 'font-size': 12 }, 'N ↑');
+    svg(map, 'line', { x1: 20, x2: 20 + 100 * scale, y1: 316, y2: 316, stroke: '#526a7b', 'stroke-width': 3 }); svg(map, 'text', { x: 20, y: 304, fill: '#526a7b', 'font-size': 10 }, '100 m');
+  }
+  function epoch(seconds) {
+    if (seconds == null || seconds < 0 || seconds >= 172800) return null;
+    const nominal = Date.parse(study.date + 'T00:00:00Z') + seconds * 1000, expected = new Date(nominal).toISOString().slice(0, 19), results = [];
+    const format = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Indiana/Indianapolis', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+    for (const offset of [4, 5]) { const at = nominal + offset * 3600000, parts = format.formatToParts(at), v = key => parts.find(p => p.type === key).value; if (`${v('year')}-${v('month')}-${v('day')}T${v('hour')}:${v('minute')}:${v('second')}` === expected) results.push(at); }
+    return results.length === 1 ? results[0] : null;
+  }
+  function selectedSeries() { return study.series.find(s => s.key === $('visit-series').value); }
+  function drawTimeline() {
+    const chart = $('visit-chart'); chart.replaceChildren(); const series = selectedSeries(), candidate = visit.candidates.find(c => c.key === series?.key);
+    $('visit-series-note').textContent = candidate?.reasons.length ? candidate.reasons.join(' ') : 'Candidate selection uses route, destination, status and a broad time window—not the smallest prediction error. Review before trusting the association.';
+    const rows = (series?.rows || []).filter(r => r.observed_at >= visit.arrival_start - 60 * 60000 && r.observed_at <= visit.arrival_end + 10 * 60000);
+    if (!rows.length) { svg(chart, 'text', { x: 30, y: 90, fill: '#647583', 'font-size': 12 }, 'No candidate prediction history to display.'); return; }
+    const values = [visit.arrival_start, visit.arrival_end, ...rows.flatMap(r => [epoch(r.predicted_seconds_raw), r.scheduled_seconds_raw ? epoch(r.scheduled_seconds_raw) : null]).filter(v => v != null)];
+    const xmin = rows[0].observed_at, xmax = Math.max(xmin + 60000, rows.at(-1).observed_at), ymin = Math.min(...values) - 60000, ymax = Math.max(...values) + 60000;
+    const x = at => 90 + (at - xmin) / (xmax - xmin) * 580, y = at => 240 - (at - ymin) / (ymax - ymin) * 210;
+    svg(chart, 'rect', { x: 90, y: y(visit.arrival_end), width: 580, height: Math.max(2, y(visit.arrival_start) - y(visit.arrival_end)), fill: '#d8ebdf' });
+    for (let i = 0; i < 4; i++) { const at = ymin + (ymax - ymin) * i / 3, yy = y(at); svg(chart, 'line', { x1: 90, x2: 670, y1: yy, y2: yy, stroke: '#e4eaf0' }); svg(chart, 'text', { x: 5, y: yy + 4, fill: '#647583', 'font-size': 10 }, time(at)); }
+    for (const [field, color, dash] of [['scheduled_seconds_raw', '#8796a2', '5 4'], ['predicted_seconds_raw', '#145bce', '']]) {
+      let previous;
+      for (const row of rows) { const at = field === 'scheduled_seconds_raw' && !row[field] ? null : epoch(row[field]); if (at == null) { previous = null; continue; } const point = [x(row.observed_at), y(at)]; if (previous && row.observed_at - previous.time <= 150000) svg(chart, 'line', { x1: previous.point[0], y1: previous.point[1], x2: point[0], y2: point[1], stroke: color, 'stroke-width': 2, 'stroke-dasharray': dash }); const circle = svg(chart, 'circle', { cx: point[0], cy: point[1], r: row.etat_passage === 0 ? 3 : 5, fill: row.etat_passage === 0 ? color : '#bd654d' }); svg(circle, 'title', {}, `${time(row.observed_at)} → ${clock(row[field])}; etatHoraire=${row.etat_horaire}, etatPassage=${row.etat_passage}`); previous = { point, time: row.observed_at }; }
+    }
+    svg(chart, 'text', { x: 90, y: 273, fill: '#647583', 'font-size': 10 }, time(xmin)); svg(chart, 'text', { x: 570, y: 273, fill: '#647583', 'font-size': 10 }, time(xmax));
+  }
+  function evidence() {
+    const table = node('table'), head = node('thead'), header = node('tr'), body = node('tbody');
+    ['Capture time', 'Kind', 'Original fields', 'Source JSON'].forEach(t => header.append(node('th', t))); head.append(header);
+    const rows = [...visit.positions.map(p => ({ at: p.observed_at, kind: 'Vehicle', raw: p.raw_json, source: p.source_key })), ...(selectedSeries()?.rows || []).filter(p => p.observed_at >= visit.arrival_start - 45 * 60000 && p.observed_at <= visit.arrival_end + 5 * 60000).map(p => ({ at: p.observed_at, kind: 'Prediction', raw: JSON.stringify({ libelle: p.destination_raw, libelleHexa: p.destination_key_raw, original: JSON.parse(p.raw_json) }), source: p.source_key }))].sort((a, b) => a.at - b.at);
+    for (const item of rows) { const row = node('tr'); row.append(node('td', time(item.at)), node('td', item.kind)); const raw = node('td'), detail = node('details'); detail.append(node('summary', 'Inspect original fields'), node('pre', item.raw)); raw.append(detail); row.append(raw, node('td', item.source)); body.append(row); }
+    table.append(head, body); $('visit-evidence').replaceChildren(table);
+  }
+  $('visit-series').addEventListener('change', () => { drawTimeline(); evidence(); $('visit-note-status').textContent = 'Series selection changed; save review to record it.'; });
+  $('visit-time').addEventListener('input', drawMap);
+  $('visit-play').addEventListener('click', () => { if (timer) { stopPlayback(); return; } if (Number($('visit-time').value) >= frames.length - 1) $('visit-time').value = '0'; $('visit-play').textContent = 'Pause'; timer = setInterval(() => { const next = Number($('visit-time').value) + 1; if (next >= frames.length) { stopPlayback(); return; } $('visit-time').value = String(next); drawMap(); }, 700); });
+  document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { if (button.dataset.view !== 'visits') stopPlayback(); }));
+  $('visit-notes').addEventListener('submit', async event => { event.preventDefault(); if (!visit) return; try { const saved = await api('/api/visits/annotation', 'PUT', { visit_id: visit.id, decision: $('visit-decision').value, prediction_key: $('visit-series').value || null, note: $('visit-note').value }); study.annotations = study.annotations.filter(a => a.visit_id !== visit.id); study.annotations.push(saved); $('visit-note-status').textContent = 'Review saved.'; } catch (error) { $('visit-note-status').textContent = error.message; } });
+})();

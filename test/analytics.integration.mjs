@@ -126,7 +126,7 @@ test('dashboard signs in with an HttpOnly session and rejects cross-origin mutat
   const session={Cookie:cookie.split(';')[0]};
   const page=await mf.dispatchFetch('https://analytics.test/',{headers:session});assert.equal(page.status,200);assert((await page.text()).includes('Export query CSV'));assert(!page.headers.get('Content-Security-Policy').includes('unsafe-inline'));
   assert.equal((await mf.dispatchFetch('https://analytics.test/assets/dashboard.js')).status,200);
-  const schema=await (await mf.dispatchFetch('https://analytics.test/api/analysis/schema',{headers:session})).json();assert.equal(schema.tables.length,7);assert(schema.tables.find(t=>t.name==='analysis_vehicles').columns.find(c=>c.name==='speed_raw').description.includes('unconfirmed'));
+  const schema=await (await mf.dispatchFetch('https://analytics.test/api/analysis/schema',{headers:session})).json();assert.equal(schema.tables.length,8);assert(schema.tables.find(t=>t.name==='analysis_vehicles').columns.find(c=>c.name==='speed_raw').description.includes('unconfirmed'));
   assert.equal((await mf.dispatchFetch('https://analytics.test/api/imports/start',{method:'POST',headers:{...session,Origin:'https://other.test'}})).status,403);
   const saved=await mf.dispatchFetch('https://analytics.test/api/imports/settings',{method:'PUT',headers:{...session,Origin:'https://analytics.test','Content-Type':'application/json'},body:JSON.stringify({daily_enabled:false,daily_time:'05:30'})});assert.equal(saved.status,200);
   const logout=await mf.dispatchFetch('https://analytics.test/logout',{method:'POST',headers:{...session,Origin:'https://analytics.test'},redirect:'manual'});assert.equal(logout.status,303);assert(logout.headers.get('Set-Cookie').includes('Max-Age=0'));
@@ -163,7 +163,7 @@ test('dashboard DOM connects filters, SQL results, CSV, schedule, and import con
   const client=await (await mf.dispatchFetch('https://analytics.test/assets/dashboard.js')).text();new Script(client).runInContext(context);
   async function until(predicate) {for(let i=0;i<100;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,20));}assert.fail('UI did not reach expected state: '+$('notice').textContent+' / '+$('query-error').textContent);}
   await until(()=>$('starter-select').children.length===5 && $('sql-input').value.includes('1793682000000'));
-  assert.equal($('vehicle-count').textContent,'1');assert.equal($('daily-enabled').checked,false);assert.equal($('schema-list').children.length,7);
+  assert.equal($('vehicle-count').textContent,'1');assert.equal($('daily-enabled').checked,false);assert.equal($('schema-list').children.length,8);
   document.querySelector('[data-view="explore"]').click();assert.equal($('workspace').hidden,false);assert.equal($('explore-filters').hidden,false);
   $('run-query').click();await until(()=>$('result-count').textContent==='1');assert.equal($('export-csv').disabled,false);
   $('sql-input').value="SELECT '<img src=x onerror=alert(1)>' AS label FROM analysis_vehicles";$('sql-input').dispatchEvent(new window.Event('input'));assert.equal($('export-csv').disabled,true);
@@ -194,4 +194,29 @@ test('Cloudflare Access identity requires a valid signature, audience, issuer, a
   }
   assert.equal((await mf.dispatchFetch('https://analytics.test/api/imports/stop',{method:'POST',headers:{...access,Origin:'https://other.test'}})).status,403);
   const logout=await mf.dispatchFetch('https://analytics.test/logout',{method:'POST',headers:{...access,Origin:'https://analytics.test'},redirect:'manual'});assert.equal(logout.headers.get('Location'),'https://test-team.cloudflareaccess.com/cdn-cgi/access/logout');
+});
+test('stop visits investigate real bindings, draw evidence, and persist owner review without touching sources',async t=>{
+  const {mf,db,bucket,repo}=await rig(t),at=Date.parse('2026-11-03T15:00:00Z');
+  const topology={topo:[{ligne:[{idLigne:9,nomCommercial:'Study route',mnemo:'9',itineraire:[{troncons:[{debut:{lat:40.99,lng:-85},fin:{lat:41.01,lng:-85}}]}]}],pointArret:[{idPointArret:123,name:'Study stop',nomCommercial:'Study stop',stopCode:'S',localisation:{lat:41,lng:-85},infoLigneSwiv:[{idLigne:9}]}]}]};
+  const key='raw/v1/full_topology/study.json';await bucket.put(key,JSON.stringify(topology));const manifest=await seed(bucket,[]);await repo.manifest(manifest);await repo.attempt(manifest,attempt(key,'full_topology','top'));
+  for(let i=0;i<3;i++) {
+    const key='raw/v1/vehicles/study-'+i+'.json';await bucket.put(key,JSON.stringify({vehicule:[{...vehicle,localisation:{lat:41+(i-1)*200/111320,lng:-85,cap:0},conduite:{idLigne:9,destination:'Terminal',vitesse:5,avanceRetard:'on time'}}]}));await repo.attempt(manifest,{...attempt(key,'vehicles','v'+i),scheduled_at:at+i*60000,requested_at:at+i*60000,completed_at:at+i*60000+100});
+    if(i<2){const pkey='raw/v1/stop_predictions/study-'+i+'.json';await bucket.put(pkey,JSON.stringify({listeHoraires:[{idLigne:9,destination:[{libelle:'Terminal',libelleHexa:'key',horaires:[{idHoraire:11,horaire:36120,horaireApplicable:36120,etatHoraire:1,etatPassage:0}]}]}]}));await repo.attempt(manifest,{...attempt(pkey,'stop_predictions','p'+i),scheduled_at:at+i*60000,requested_at:at+i*60000,completed_at:at+i*60000+100});}
+  }
+  const post=(path,body,method='POST')=>mf.dispatchFetch('https://analytics.test'+path,{method,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const opts=await (await mf.dispatchFetch('https://analytics.test/api/visits/options',{headers})).json();assert.equal(opts.date,'2026-11-03');assert.deepEqual(opts.stops[0].route_ids,[9]);
+  const response=await post('/api/visits/investigate',{date:'2026-11-03',route_id:9,stop_id:123});assert.equal(response.status,200,await response.clone().text());const study=await response.json();assert.equal(study.visits.length,1);assert.equal(study.visits[0].classification,'matched');assert.equal(study.geometry.length,1);
+  const visit=study.visits[0],note={visit_id:visit.id,prediction_key:visit.matched_key,decision:'accept',note:'Reviewed the original French fields.'};assert.equal((await post('/api/visits/annotation',note,'PUT')).status,200);
+  assert.equal((await post('/api/visits/annotation',{...note,prediction_key:'not-a-candidate'},'PUT')).status,400);
+  const repeat=await (await post('/api/visits/investigate',{date:'2026-11-03',route_id:9,stop_id:123})).json();assert.equal(repeat.annotations[0].note,note.note);assert.equal((await db.prepare('SELECT COUNT(*) n FROM inferred_stop_visits').first()).n,1);assert.equal((await db.prepare('SELECT COUNT(*) n FROM vehicle_observations').first()).n,3);
+  const {document,window}=parseHTML(await (await mf.dispatchFetch('https://analytics.test/',{headers})).text()),$=id=>document.getElementById(id);
+  for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{get(){return Array.from(this.querySelectorAll('option')).find(o=>o.hasAttribute('selected'))?.value??this.querySelector('option')?.value??'';},set(value){for(const o of this.querySelectorAll('option'))o.toggleAttribute('selected',o.value===value);}});
+  const context=createContext({document,console,Intl,Date,URLSearchParams,location:{assign:()=>{}},URL,setTimeout,setInterval:()=>1,clearInterval:()=>{},fetch:(path,options={})=>mf.dispatchFetch('https://analytics.test'+path,{...options,headers:{...options.headers,...headers}})});
+  for(const file of ['dashboard','visits'])new Script(await (await mf.dispatchFetch('https://analytics.test/assets/'+file+'.js')).text()).runInContext(context);
+  async function until(test){for(let i=0;i<100;i++){if(test())return;await new Promise(r=>setTimeout(r,20));}assert.fail('Visit UI failed: '+$('visit-message').textContent);}
+  document.querySelector('[data-view="visits"]').click();await until(()=>$('visit-stop').children.length===1);assert.equal($('workspace').hidden,true);
+  $('visit-form').dispatchEvent(new window.Event('submit',{cancelable:true}));await until(()=>$('visit-map').querySelectorAll('circle').length>0);
+  assert($('visit-chart').querySelectorAll('circle').length>0);assert($('visit-evidence').textContent.includes('horaireApplicable'));
+  $('visit-note').value='Saved through the investigation screen.';$('visit-notes').dispatchEvent(new window.Event('submit',{cancelable:true}));await until(()=>$('visit-note-status').textContent==='Review saved.');
+  assert.equal((await db.prepare('SELECT note FROM visit_annotations WHERE visit_id=?').bind(visit.id).first()).note,'Saved through the investigation screen.');
 });
