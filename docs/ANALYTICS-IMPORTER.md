@@ -101,7 +101,8 @@ observations. No percentage is reported before discovery establishes a total.
 
 ## Provisioning and release
 
-The checked-in D1 ID is an explicit placeholder. Before a production release:
+The current production setup is recorded in ANALYTICS-DEPLOYMENT.md. For a new
+environment, before a production release:
 
 1. Create the dedicated `citilink-analytics` D1 database and put its actual ID in
    `wrangler.analytics.jsonc`.

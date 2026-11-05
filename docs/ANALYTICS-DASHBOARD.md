@@ -99,7 +99,7 @@ bindings are separate from production; the UI starts with empty history unless
 local archive data has been supplied. Set the local secret through an ignored
 `.dev.vars` file or the project's supported secret mechanism.
 
-Production setup still requires the dedicated D1 ID in
+For a new environment, production setup requires the dedicated D1 ID in
 `wrangler.analytics.jsonc`, **both** SQL migrations, and `IMPORT_TOKEN`. Configure
 the intended Access policy before sharing the dashboard URL. The existing
 collector's deployment script remains unchanged; deploy the analytics Worker
@@ -111,3 +111,6 @@ signing, authenticated HTTP routes, Access signature verification, result/export
 caps, and dashboard DOM interactions against the local Worker. A visual browser
 review was unavailable in the build session; DOM checks do not verify visual
 layout or native browser download behavior.
+
+The current live URL and completed setup are recorded in
+[ANALYTICS-DEPLOYMENT.md](ANALYTICS-DEPLOYMENT.md).

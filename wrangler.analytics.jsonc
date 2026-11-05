@@ -5,6 +5,10 @@
   "compatibility_date": "2026-10-30",
   "workers_dev": true,
   "preview_urls": false,
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "shy-snowflake-bcde.cloudflareaccess.com",
+    "ACCESS_AUD": "2ae128f443dbdfa52ede5a07b9a5ed912400fdeacfdedda790c776ffcc039b19"
+  },
   "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": true }],
   "triggers": { "crons": ["* * * * *"] },
   "durable_objects": {
