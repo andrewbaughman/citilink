@@ -79,3 +79,13 @@ and both Worker builds. Cloudflare readback confirmed the expanded plan at 100%
 traffic, the retained R2/DO/secret bindings, and 30-second vehicle cadence. Public
 health checks returned 200/ok after deployment. No analytics deployment, database
 migration, secret change, import-setting change or archive deletion was performed.
+
+The first expanded-panel service-hours verification passed: the latest receipt
+used capture-plan SHA-256
+`fc044b905067f8d2965325f0df3d4496df3223c9e889027df159907dbf31a439`, expected and
+successfully archived all eight stops, and recorded five permanent references
+plus three study stops. Every response returned HTTP 200, contained prediction
+groups, and matched both body and object SHA-256 checksums. The receipt and
+immutable manifest had identical selection context. Public health remained
+200/ok after verification. Verification read private R2 objects without triggering
+extra Citilink requests or changing the dashboard password.
