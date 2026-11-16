@@ -30,7 +30,7 @@ test('compiled Worker runs against real local SQLite Durable Object and R2 bindi
  const slot=Math.floor(Date.now()/60000)*60000;
  const result=await coordinator.tick(slot);assert.equal(result.status,'finished');assert(upstreamCalls.length>=3);
  const statusResponse=await mf.dispatchFetch('https://collector.test/api/status',{headers:auth});assert.equal(statusResponse.status,200);
- const status=await statusResponse.json();assert(status.datasets.vehicles.last_success_slot);assert.equal(status.roster_count,751);
+ const status=await statusResponse.json();assert(status.datasets.vehicles.last_success_slot);assert.equal(status.roster_count,751);assert.equal(status.datasets.vehicles.cadence_seconds,30);assert(status.next_alarm_at>Date.now()-1000);
  const manifestResponse=await mf.dispatchFetch('https://collector.test/api/archive?key='+encodeURIComponent(status.last_manifest),{headers:auth});
  assert.equal(manifestResponse.status,200);assert.equal(manifestResponse.headers.get('content-type'),'application/json');
  const manifest=await manifestResponse.json();assert(manifest.attempts.length>=3);

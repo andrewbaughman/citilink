@@ -75,7 +75,8 @@ test('essential reservation prevents optional work consuming protected request c
   await new Engine(r.store,r.bucket,p,r.io).tick(r.now());assert.equal(r.calls.length,1);assert(r.calls[0]!.url.includes('/vehicules'));
 });
 test('actual UTC-day rollover resets budgets but retains request-start spacing',async()=>{
-  const r=rig(vehicleOnly());r.setTime(Date.UTC(2026,9,31,23,59,59,500));await r.engine.tick(r.now());
+  const p=vehicleOnly();p.datasets.vehicles.schedule.interval_minutes=0.5;
+  const r=rig(p);r.setTime(Date.UTC(2026,9,31,23,59,59,500));await r.engine.tick(r.now());
   assert.equal((await r.engine.status()).budget.total,1);
   r.advance(500);await r.engine.tick(r.now());
   assert.equal((await r.engine.status()).budget.day,'2026-11-01');assert.equal((await r.engine.status()).budget.total,1);

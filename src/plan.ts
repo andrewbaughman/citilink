@@ -1,4 +1,5 @@
-import type { Selection } from './selection';
+import {permanentStopCodes,type Selection} from './selection';
+export const COLLECTOR_SLOT_MS = 30000;
 export const ENDPOINTS = {
   vehicles: '/topo/vehicules',
   topology_updates: '/topo/refresh',
@@ -84,19 +85,25 @@ export function validatePlan(raw: unknown): Plan {
     fields(d, ['enabled','tier','priority','schedule','selection','max_requests_per_utc_day','timeout_seconds','max_start_lag_seconds','retry','health','triggers'], id);
     const schedule = object(d.schedule, `${id}.schedule`);
     fields(schedule, ['interval_minutes','phase_minute'], `${id}.schedule`);
-    const interval = integer(schedule.interval_minutes, 1, 10080, `${id}.interval`);
-    integer(schedule.phase_minute, 0, interval - 1, `${id}.phase`);
+    // Preserve whole-minute schedules; only vehicle locations support half-minute polling.
+    const interval = id === 'vehicles' && schedule.interval_minutes === 0.5
+      ? 0.5 : integer(schedule.interval_minutes, 1, 10080, `${id}.interval`);
+    integer(schedule.phase_minute, 0, Math.ceil(interval) - 1, `${id}.phase`);
     bool(d.enabled, id);
     if (d.tier !== 'essential' && d.tier !== 'optional') throw Error(`${id}: invalid tier`);
     integer(d.priority, 0, 1000, `${id}.priority`);
     const selection = object(d.selection, `${id}.selection`);
-    fields(selection, ['mode','stop_ids','max_stops_per_cycle','permanent_stop_code','starts_month','campaigns'], `${id}.selection`);
+    fields(selection, ['mode','stop_ids','max_stops_per_cycle','permanent_stop_code','permanent_stop_codes','starts_month','campaigns'], `${id}.selection`);
     if (id === 'stop_predictions') {
       if (!['fixed','round_robin','campaign'].includes(selection.mode as string)) throw Error('Stops require an explicit fixed or bounded rotating panel');
       const cap = integer(selection.max_stops_per_cycle, 1, 100, 'stop cap');
       if(selection.mode==='campaign'){
-        if(cap!==4 || selection.stop_ids!==undefined)throw Error('Campaign requires four stops and uses stable codes');
-        if(typeof selection.permanent_stop_code!=='string' || !/^[A-Za-z0-9_-]+$/.test(selection.permanent_stop_code))throw Error('Invalid permanent stop code');
+        if(selection.stop_ids!==undefined)throw Error('Campaign uses stable codes');
+        if(selection.permanent_stop_code!==undefined && selection.permanent_stop_codes!==undefined)throw Error('Use either permanent_stop_code or permanent_stop_codes');
+        if(selection.permanent_stop_codes!==undefined && !Array.isArray(selection.permanent_stop_codes))throw Error('Permanent stop codes must be an array');
+        const permanent=permanentStopCodes(selection as unknown as Selection);
+        if(!permanent.length || permanent.some(v=>typeof v!=='string' || !/^[A-Za-z0-9_-]+$/.test(v)) || new Set(permanent).size!==permanent.length)throw Error('Invalid or duplicate permanent stop codes');
+        if(cap!==permanent.length+3)throw Error('Campaign cap must equal permanent stops plus three study stops');
         if(typeof selection.starts_month!=='string' || !/^20\d\d-(0[1-9]|1[0-2])$/.test(selection.starts_month))throw Error('Invalid campaign start month');
         if(!Array.isArray(selection.campaigns) || !selection.campaigns.length)throw Error('Campaign list required');
         const campaignIds=new Set<string>();
@@ -105,14 +112,14 @@ export function validatePlan(raw: unknown): Plan {
           for(const k of ['id','label','route_mnemo','direction'])if(typeof c[k]!=='string' || !c[k])throw Error('Campaign metadata required');
           if(!/^[A-Za-z0-9_-]+$/.test(c.id as string) || campaignIds.has(c.id as string))throw Error('Campaign IDs must be unique');
           campaignIds.add(c.id as string);
-          if(!Array.isArray(c.study_stop_codes) || c.study_stop_codes.length!==3 || c.study_stop_codes.some(v=>typeof v!=='string' || !/^[A-Za-z0-9_-]+$/.test(v)) || new Set([...c.study_stop_codes,selection.permanent_stop_code]).size!==4)throw Error('Campaign requires three unique study codes distinct from the permanent reference');
+          if(!Array.isArray(c.study_stop_codes) || c.study_stop_codes.length!==3 || c.study_stop_codes.some(v=>typeof v!=='string' || !/^[A-Za-z0-9_-]+$/.test(v)) || new Set([...c.study_stop_codes,...permanent]).size!==3+permanent.length)throw Error('Campaign requires three unique study codes distinct from permanent stops');
         }
-      }else if(selection.campaigns!==undefined || selection.permanent_stop_code!==undefined || selection.starts_month!==undefined)throw Error('Campaign fields require campaign mode');
+      }else if(selection.campaigns!==undefined || selection.permanent_stop_code!==undefined || selection.permanent_stop_codes!==undefined || selection.starts_month!==undefined)throw Error('Campaign fields require campaign mode');
       const stops = selection.stop_ids;
       if (stops !== undefined && (!Array.isArray(stops) || stops.some(s => !Number.isSafeInteger(s) || s <= 0) || new Set(stops).size !== stops.length)) throw Error('Stop IDs must be unique positive integers');
       if (selection.mode === 'fixed' && (!Array.isArray(stops) || stops.length > cap || (d.enabled && !stops.length))) throw Error('Enabled fixed panel requires 1..cap explicit stop IDs');
       if (selection.mode === 'round_robin' && Array.isArray(stops) && stops.length) throw Error('Rotating selection uses the discovered roster, not stop_ids');
-    } else if (selection.mode !== 'all' || selection.stop_ids !== undefined || selection.max_stops_per_cycle !== undefined || selection.campaigns !== undefined || selection.permanent_stop_code !== undefined || selection.starts_month !== undefined) throw Error(`${id}: requires one unfiltered request`);
+    } else if (selection.mode !== 'all' || selection.stop_ids !== undefined || selection.max_stops_per_cycle !== undefined || selection.campaigns !== undefined || selection.permanent_stop_code !== undefined || selection.permanent_stop_codes !== undefined || selection.starts_month !== undefined) throw Error(`${id}: requires one unfiltered request`);
     const retry = { ...object(defaults.retry,'default.retry'), ...object(d.retry ?? {},`${id}.retry`) };
     fields(retry, ['max_attempts','initial_backoff_seconds','max_backoff_seconds'], 'retry');
     integer(retry.max_attempts, 1, 3, 'attempts');
@@ -162,12 +169,12 @@ export function estimatePlan(plan: Plan) {
   return { total, optional, datasets, note: 'Base maximum per UTC day; retries and event-triggered captures spend remaining budget. Rotating stop estimates use the configured cap.' };
 }
 export function isDue(slot: number, d: DatasetPlan) {
-  return Math.floor(slot / 60000) % d.schedule.interval_minutes === d.schedule.phase_minute;
+  return slot % (d.schedule.interval_minutes * 60000) === d.schedule.phase_minute * 60000;
 }
 export function nextSlot(now: number, d: DatasetPlan): number {
-  const minute = Math.floor(now / 60000);
-  const remainder = ((d.schedule.phase_minute - minute) % d.schedule.interval_minutes + d.schedule.interval_minutes) % d.schedule.interval_minutes;
-  return (minute + remainder) * 60000;
+  const slot = Math.floor(now / COLLECTOR_SLOT_MS) * COLLECTOR_SLOT_MS;
+  const interval = d.schedule.interval_minutes * 60000, phase = d.schedule.phase_minute * 60000;
+  return slot + ((phase - slot) % interval + interval) % interval;
 }
 export function retryAfter(value: string | null, now: number): number | undefined {
   if (value === null) return;

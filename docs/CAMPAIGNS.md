@@ -1,10 +1,30 @@
 # Stop-prediction campaigns
 
-The deployed plan polls **four stops every two minutes**, all day: one permanent reference and three study stops. It adds 2,880 base API requests/day, for approximately **6,360/day overall**. Retries and event-triggered topology refreshes consume the existing 8,000/day overall and 4,000/day prediction limits. Neither limit was raised.
+The plan polls **eight stops every two minutes**, all day: five permanent stops
+and three monthly study stops. Predictions use 5,760 base API requests/day. With
+the live 30-second vehicle cadence and unchanged other feeds, the total is
+**10,680/day**, up from 7,800/day for the previous four-stop live panel. Bounded
+limits are 13,000/day overall, 7,000/day for predictions, and 6,000/day reserved
+for essential feeds. Sequential requests, one-second minimum spacing, retries,
+and global rate-limit backoff remain enforced.
 
-## Permanent reference
+## Permanent stops
 
-**Central Station – Bay N**, stop code `central-bay-N`. The current topology associates it with routes 2-Georgetown and 2-Time Corners. This is a continuing reference at a transfer hub, not a control that can eliminate route-specific or seasonal effects.
+These remain selected through every monthly campaign:
+
+| Stop | Stable code | Current API ID | Route(s) |
+| --- | --- | --- | --- |
+| Central Station – Bay N | `central-bay-N` | `277719` | 2G, 2TC |
+| Anthony @ Washington | `792` | `277660` | 4P |
+| Apple Glen/Walmart | `123457` | `277754` | 2TC |
+| Apple Glen near PetSmart | `434` | `277691` | 2TC |
+| Illinois / Apple Glen | `70` | `277807` | 2TC |
+
+Names, codes, numeric IDs and route memberships were checked against the live
+public topology on November 16, 2026. The Apple Glen panel includes the Illinois
+intersection as well as the Walmart and PetSmart stops. IDs are resolved from
+archived topology at collection time, not hardcoded in the capture plan. This is
+a permanent observation panel, not an experimental control.
 
 ## Monthly study panels
 
@@ -24,10 +44,11 @@ Panels were selected from live topology and route memberships, with nominal dire
 
 Edit `datasets.stop_predictions.selection` in `capture-plan.json`:
 
-- `permanent_stop_code`: the reference held across campaigns.
+- `permanent_stop_codes`: nonempty unique permanent codes held across campaigns.
+  The legacy singular `permanent_stop_code` remains supported; use one form only.
 - `starts_month`: the UTC starting month (`YYYY-MM`).
 - `campaigns`: the ordered repeating sequence; each entry has an ID, label, route mnemonic, nominal direction, and exactly three distinct study stop codes.
-- `max_stops_per_cycle`: four for this design.
+- `max_stops_per_cycle`: exactly the permanent count plus three study stops (eight here).
 
 The independent dataset schedule is two minutes, phase zero. Configuration validation rejects duplicate/reference collisions and over-budget schedules. Disabling the dataset still pauses all prediction requests.
 
@@ -43,6 +64,6 @@ A private convenience receipt at `indexes/v1/stop_predictions/latest.json` point
 npm run verify:campaign
 ```
 
-This uses the authorized Cloudflare account/R2 API, not the dashboard password. It checks receipt recency, one permanent/three study roles, manifest consistency, four successful JSON responses, and original-body/object SHA-256 checksums. It does not trigger Citilink requests and never reads or replaces the dashboard secret.
+This uses the authorized Cloudflare account/R2 API, not the dashboard password. It checks receipt recency, the configured plan hash, five permanent/three study roles, manifest consistency, eight successful JSON responses, and original-body/object SHA-256 checksums. It does not trigger Citilink requests and never reads or replaces the dashboard secret.
 
-The first production batch successfully archived all four responses with HTTP 200 and matching checksums. At verification time they contained empty `listeHoraires` arrays. Those are valid observations, not evidence that actual forecasts or bus/departure matching have already been validated. Observe service hours during the first-week pilot; minute-level vehicle sampling still limits arrival-time precision. Collection continues through the month, and each corridor is revisited quarterly to help interpret seasonal differences.
+The original four-stop production batch successfully archived all four responses with HTTP 200 and matching checksums. At verification time they contained empty `listeHoraires` arrays. Those are valid observations, not evidence that actual forecasts or bus/departure matching have already been validated. Observe service hours during the first-week pilot; minute-level vehicle sampling still limits arrival-time precision. Collection continues through the month, and each corridor is revisited quarterly to help interpret seasonal differences.

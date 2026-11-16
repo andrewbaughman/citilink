@@ -3,8 +3,8 @@
   "global": {
     "max_in_flight": 1,
     "min_request_spacing_ms": 1000,
-    "max_requests_per_utc_day": 8000,
-    "reserved_essential_requests_per_utc_day": 4000,
+    "max_requests_per_utc_day": 13000,
+    "reserved_essential_requests_per_utc_day": 6000,
     "catch_up": false,
     "honor_retry_after": true,
     "circuit_breaker": {
@@ -33,7 +33,7 @@
       "tier": "essential",
       "priority": 100,
       "schedule": {
-        "interval_minutes": 1,
+        "interval_minutes": 0.5,
         "phase_minute": 0
       },
       "selection": {
@@ -120,8 +120,7 @@
       },
       "selection": {
         "mode": "campaign",
-        "max_stops_per_cycle": 4,
-        "permanent_stop_code": "central-bay-N",
+        "max_stops_per_cycle": 8,
         "starts_month": "2026-11",
         "campaigns": [
           {
@@ -157,9 +156,16 @@
               "198"
             ]
           }
+        ],
+        "permanent_stop_codes": [
+          "central-bay-N",
+          "792",
+          "123457",
+          "434",
+          "70"
         ]
       },
-      "max_requests_per_utc_day": 4000,
+      "max_requests_per_utc_day": 7000,
       "health": {
         "required": true,
         "minimum_coverage_percent": 100
