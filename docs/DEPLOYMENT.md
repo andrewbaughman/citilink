@@ -57,3 +57,25 @@ Current November campaign: permanent **Central Station – Bay N**, with **Calho
 All 30 unit tests and the compiled-Worker integration test passed. Tests include actual scheduled odd/even minute behavior, monthly boundaries/wrapping, invariant reference selection, current-ID changes, missing/wrong-route codes, and raw campaign metadata/receipt fidelity.
 
 The owner's existing dashboard password was preserved. The local password had become stale; deployment tooling now detects this and preserves the remote value rather than uploading it. Administrative verification uses the existing authorized R2 account API and never extracts the remote password.
+
+## Permanent panel expansion — November 16, 2026
+
+Collector version `8ad9d29a-273c-43db-aa0d-e8d23aab1bc7` is deployed at 100%
+traffic (deployment `895e416a-c20b-4ac8-b940-aa8883aae1c3`, 11:58 a.m.
+Indianapolis time). The source is tracked in PR #6. It retains the live
+30-second vehicle polling and persistent alarms from the November 13 deployment;
+those changes had not previously been tracked on main.
+
+Permanent predictions now include Central Station–Bay N (`central-bay-N`),
+Anthony @ Washington (`792`), Apple Glen/Walmart (`123457`), Apple Glen near
+PetSmart (`434`), and Illinois/Apple Glen (`70`). Three monthly study stops
+continue to rotate. All eight stops are selected every two minutes, using
+stable codes resolved against topology. See [CAMPAIGNS.md](CAMPAIGNS.md).
+
+The planned baseline is 10,680 requests/day; caps are 13,000 globally and 7,000
+for predictions, with 6,000 reserved for essential feeds. Source validation
+passed 50 unit and 12 integration tests, type checking, capture-plan validation
+and both Worker builds. Cloudflare readback confirmed the expanded plan at 100%
+traffic, the retained R2/DO/secret bindings, and 30-second vehicle cadence. Public
+health checks returned 200/ok after deployment. No analytics deployment, database
+migration, secret change, import-setting change or archive deletion was performed.
