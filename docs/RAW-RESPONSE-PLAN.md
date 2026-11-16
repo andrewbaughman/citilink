@@ -1,3 +1,5 @@
+> Current panel and live cadence: see [CAMPAIGNS.md](CAMPAIGNS.md). The expanded panel has five permanent and three monthly stops every two minutes, 30-second vehicles, a 10,680/day baseline and bounded 13,000/day global / 7,000/day prediction caps. Older four-stop volume estimates below describe the original design.
+
 # Simplified Citilink plan: individual JSON responses
 
 ## Goal and scope

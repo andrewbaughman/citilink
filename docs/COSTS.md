@@ -1,3 +1,5 @@
+> November 16 expansion: the current 30-second vehicle/eight-stop plan projects 320,400 raw responses, 86,400 half-minute manifests and 21,600 prediction receipts per 30 days (428,400 base writes before configuration and retries). Storage depends on actual payloads. Historical four-stop/minute-vehicle estimates below are retained for comparison; see [CAMPAIGNS.md](CAMPAIGNS.md) for current budgets.
+
 # Monthly cost and ways to save
 
 **Current deployment:** Workers Free plus R2 Standard and a public-repository GitHub monitor. No paid plan was purchased. Initial usage is expected to fit free quotas; retained storage beyond allowances remains billable. The $5 Paid-plan budget below is an optional headroom scenario.

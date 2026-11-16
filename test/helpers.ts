@@ -6,6 +6,9 @@ export function deployedPlan() { return JSON.parse(readFileSync(new URL('../capt
 // Isolate legacy core-feed tests; deployedPlan() returns the actual campaign configuration.
 export function plan() {
  const p=deployedPlan();
+ p.global.max_requests_per_utc_day=8000;p.global.reserved_essential_requests_per_utc_day=4000;
+ p.datasets.vehicles.schedule.interval_minutes=1;
+ p.datasets.stop_predictions.max_requests_per_utc_day=4000;
  p.datasets.stop_predictions.enabled=false;
  p.datasets.stop_predictions.schedule={interval_minutes:5,phase_minute:3};
  p.datasets.stop_predictions.selection={mode:'fixed',stop_ids:[],max_stops_per_cycle:10};

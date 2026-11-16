@@ -39,3 +39,10 @@ test('topology event spacing must not exceed its configured polling interval',()
  const p=plan();p.datasets.full_topology.schedule.interval_minutes=5;p.datasets.full_topology.schedule.phase_minute=0;
  assert.throws(()=>validatePlan(p),/trigger spacing/);
 });
+
+test('only vehicles support half-minute intervals; all phases remain valid',()=>{
+ const p=plan();p.datasets.vehicles.schedule.interval_minutes=0.5;
+ assert.equal(validatePlan(p).datasets.vehicles.schedule.interval_minutes,0.5);
+ for(const interval of [0.25,0.75]){const x=plan();x.datasets.vehicles.schedule.interval_minutes=interval;assert.throws(()=>validatePlan(x));}
+ const x=plan();x.datasets.topology_updates.schedule.interval_minutes=0.5;assert.throws(()=>validatePlan(x));
+});

@@ -3,8 +3,8 @@
 A small Cloudflare service that archives Fort Wayne Citilink's public API as individual JSON files. It records what the API returns rather than inserting parsed bus data into a database.
 
 - **One Worker**, a **SQLite-backed Durable Object**, and a **private R2 bucket**.
-- Fleet positions and detour updates every minute; messages/version every five minutes; full topology hourly and on coalesced change/resume events.
-- **6,360 base API requests/day**, including four prediction stops every two minutes: one permanent reference and three monthly corridor stops.
+- Fleet positions every 30 seconds and detour updates every minute; messages/version every five minutes; full topology hourly and on coalesced change/resume events.
+- **10,680 base API requests/day**, including eight prediction stops every two minutes: five permanent stops and three monthly corridor stops.
 - A shared one-request-at-a-time pacer, one-second minimum spacing, durable daily budgets, timeouts, bounded retries, and global rate-limit backoff.
 - An authenticated dashboard, raw JSON downloads, configuration history, and a freshness-aware `/healthz` endpoint.
 - A `workers.dev` address with built-in dashboard authentication; **no custom domain required**.
@@ -15,7 +15,7 @@ A small Cloudflare service that archives Fort Wayne Citilink's public API as ind
 - [Private archive dashboard](https://citilink-history.empty-mouse-f437.workers.dev/): HTTP Basic username `citilink`; password is the Worker's `STATUS_TOKEN` secret.
 - Cloudflare resources: Worker `citilink-history`, private R2 bucket `citilink-history`, and the SQLite coordinator.
 
-The Worker runs every minute on Workers Free. All six datasets are enabled. Four prediction responses per cycle have been archived and checksum-verified, and campaign selection rotates monthly while preserving the reference stop. A generated dashboard password is kept outside Git; see the [runbook](docs/RUNBOOK.md) for choosing your own in Cloudflare. All raw files remain private.
+The Worker runs every minute on Workers Free. All six datasets are enabled. Eight prediction responses per cycle have been archived and checksum-verified, and campaign selection rotates monthly while preserving the five permanent stops. A generated dashboard password is kept outside Git; see the [runbook](docs/RUNBOOK.md) for choosing your own in Cloudflare. All raw files remain private.
 
 ## Run locally
 
@@ -66,7 +66,7 @@ The script distinguishes an accessible deployment from healthy collection: sched
 
 ## Prediction campaign
 
-The permanent reference is **Central Station – Bay N**. The November study panel is **Calhoun near Hawthorne, Packard, and Creighton**, northbound. Three monthly panels repeat automatically on UTC month boundaries. [Locations, rotation, and pilot limitations](docs/CAMPAIGNS.md).
+The permanent panel includes **Central Station – Bay N**, **Anthony @ Washington**, and the three **Apple Glen** stops (Walmart, near PetSmart, and Illinois/Apple Glen). The November study panel is **Calhoun near Hawthorne, Packard, and Creighton**, northbound. Three monthly panels repeat automatically on UTC month boundaries. [Locations, rotation, and pilot limitations](docs/CAMPAIGNS.md).
 
 Run `npm run verify:campaign` with Cloudflare account credentials to check private prediction files without using or resetting the dashboard password.
 

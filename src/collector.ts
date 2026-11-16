@@ -1,5 +1,5 @@
 import { buildStopIndex, resolveCampaign, type StopIndex } from './selection';
-import { IDS, estimatePlan, isDue, nextSlot, retryAfter, validatePlan, type DatasetId, type DatasetPlan, type Plan } from './plan';
+import { COLLECTOR_SLOT_MS, IDS, estimatePlan, isDue, nextSlot, retryAfter, validatePlan, type DatasetId, type DatasetPlan, type Plan } from './plan';
 import { base64, jsonOptions, parseJson, pathFor, readBody, safeHeaders, sha256, stopRoster, structurallyValid, upstreamUrl, type Bucket } from './archive';
 
 export interface Store { get<T>(key: string): Promise<T | undefined>; put(key: string, value: unknown): Promise<unknown> }
@@ -35,7 +35,7 @@ interface State {
   datasets: Record<DatasetId,Stats>; active_run?: Run; last_manifest?: string; recent_runs: { slot: number; key: string; status: string }[];
 }
 const VERSION = '1.0.0';
-const slotOf = (at: number) => Math.floor(at/60000)*60000;
+const slotOf = (at: number) => Math.floor(at/COLLECTOR_SLOT_MS)*COLLECTOR_SLOT_MS;
 const dayOf = (at: number) => new Date(at).toISOString().slice(0,10);
 export class Engine {
   private state!: State;
@@ -327,8 +327,8 @@ export class Engine {
       const healthy=!d.enabled || (!stale && !stats.incident);
       if (d.enabled && d.health.required && !healthy) reasons.push(`${id}_unhealthy`);
       else if (d.enabled && d.health.required && stats.last_success_slot===undefined) reasons.push(`${id}_warming_up`);
-      datasets[id]={ ...stats, enabled:d.enabled, required:d.health.required, tier:d.tier, cadence_minutes:d.schedule.interval_minutes,
-        next_due_at:nextSlot(now+60000,d), deadline, healthy, warming_up:d.enabled && stats.last_success_slot===undefined && !stale,
+      datasets[id]={ ...stats, enabled:d.enabled, required:d.health.required, tier:d.tier, cadence_minutes:d.schedule.interval_minutes, cadence_seconds:d.schedule.interval_minutes*60,
+        next_due_at:nextSlot(now+COLLECTOR_SLOT_MS,d), deadline, healthy, warming_up:d.enabled && stats.last_success_slot===undefined && !stale,
         unchanged_body_advisory:!!(d.enabled && d.health.unchanged_body_advisory_minutes && stats.unchanged_since && now-stats.unchanged_since>d.health.unchanged_body_advisory_minutes*60000),
       };
     }

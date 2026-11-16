@@ -10,6 +10,7 @@ export interface Selection {
   stop_ids?: number[];
   max_stops_per_cycle?: number;
   permanent_stop_code?: string;
+  permanent_stop_codes?: string[];
   starts_month?: string;
   campaigns?: Campaign[];
 }
@@ -38,15 +39,19 @@ export function campaignAt(selection:Selection,slot:number) {
   const campaign=selection.campaigns![(month-startMonth)%selection.campaigns!.length]!;
   return {campaign,month:date.toISOString().slice(0,7)};
 }
+export function permanentStopCodes(selection:Selection):string[] {
+  return selection.permanent_stop_codes ?? (selection.permanent_stop_code ? [selection.permanent_stop_code] : []);
+}
 export function resolveCampaign(selection:Selection,slot:number,index:StopIndex) {
   const {campaign,month}=campaignAt(selection,slot);
-  const codes=[selection.permanent_stop_code!,...campaign.study_stop_codes];
+  const permanent=permanentStopCodes(selection);
+  const codes=[...permanent,...campaign.study_stop_codes];
   const stops=codes.map((code,i)=>{
     const stop=index[code];
     if(!stop)throw Error('campaign_stop_code_unavailable');
-    if(i>0 && !stop.routes.includes(campaign.route_mnemo))throw Error('campaign_route_membership_changed');
-    return {code,...stop,role:i===0?'permanent_reference':'study'};
+    if(i>=permanent.length && !stop.routes.includes(campaign.route_mnemo))throw Error('campaign_route_membership_changed');
+    return {code,...stop,role:i<permanent.length?'permanent_reference':'study'};
   });
-  if(new Set(stops.map(s=>s.id)).size!==4)throw Error('campaign_requires_four_distinct_stops');
+  if(stops.length!==selection.max_stops_per_cycle || new Set(stops.map(s=>s.id)).size!==codes.length)throw Error('campaign_requires_distinct_stops');
   return {ids:stops.map(s=>s.id),context:{id:campaign.id,label:campaign.label,utc_month:month,route_mnemo:campaign.route_mnemo,direction:campaign.direction,stops}};
 }

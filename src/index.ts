@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import rawPlan from '../capture-plan.json';
 import { Engine } from './collector';
+import { COLLECTOR_SLOT_MS } from './plan';
 import { dashboard } from './dashboard';
 export interface Env {
   COORDINATOR: DurableObjectNamespace<Collector>;
@@ -15,8 +16,18 @@ export class Collector extends DurableObject<Env> {
     super(ctx,env);
     this.engine=new Engine(ctx.storage,env.ARCHIVE,rawPlan);
   }
-  tick(scheduledTime: number) { return this.engine.tick(scheduledTime); }
-  async status(): Promise<string> { return JSON.stringify(await this.engine.status()); }
+  async tick(scheduledTime: number) {
+    try { return await this.engine.tick(scheduledTime); }
+    finally {
+      // Persistent half-minute wakes; cron recovers the chain after a failed invocation.
+      // Never postpone a nearer alarm when a duplicate cron call arrives.
+      const now=Date.now(),next=(Math.floor(now/COLLECTOR_SLOT_MS)+1)*COLLECTOR_SLOT_MS;
+      const existing=await this.ctx.storage.getAlarm();
+      if(existing===null || existing<=now || existing>next)await this.ctx.storage.setAlarm(next);
+    }
+  }
+  async alarm() { await this.tick(Date.now()); }
+  async status(): Promise<string> { return JSON.stringify({...await this.engine.status(),next_alarm_at:await this.ctx.storage.getAlarm()}); }
 }
 async function matches(value: string, expected: string) {
   const encode=new TextEncoder();
