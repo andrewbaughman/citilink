@@ -20,6 +20,7 @@
     $('visits').hidden = next !== 'visits';
     $('comparison').hidden = next !== 'comparison';
     document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.view === next)));
+    if (typeof history !== 'undefined') history.replaceState(null, '', '#' + next);
   }
   function queryChanged() { $('export-csv').disabled = busy || !lastQuery || $('sql-input').value !== lastQuery; }
   function filterVisibility() {

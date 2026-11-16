@@ -34,6 +34,11 @@
     stops(); loaded = true; $('comparison-message').textContent = data.warning || 'Select a capture day, service date, route and stop.';
   }
   document.querySelector('[data-view="comparison"]').addEventListener('click', () => { if (!loaded) loadOptions().catch(e => { $('comparison-message').textContent = e.message; }); });
+  $('open-comparison').addEventListener('click', event => {
+    event.preventDefault(); document.querySelector('[data-view="comparison"]').click();
+    $('comparison-title').focus?.(); $('comparison-title').scrollIntoView?.({ block: 'start' });
+  });
+  if (location.hash === '#comparison') document.querySelector('[data-view="comparison"]').click();
   $('comparison-date').addEventListener('change', () => { clearResult(); $('comparison-service-date').value = $('comparison-date').value; loadOptions().catch(e => { $('comparison-message').textContent = e.message; }); });
   $('comparison-service-date').addEventListener('change', clearResult);
   $('comparison-route').addEventListener('change', stops);

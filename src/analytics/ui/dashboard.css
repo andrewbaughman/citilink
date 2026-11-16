@@ -5,3 +5,9 @@
 #comparison-chart { width: 100%; height: auto; min-height: 200px; }
 #comparison-table { max-height: 540px; overflow: auto; }
 #comparison-table th { position: sticky; top: 0; background: #f4f7fa; }
+
+.comparison-entry { display:flex; align-items:center; justify-content:space-between; gap:28px; margin-bottom:24px; background:var(--blue-light); border-color:#b9cff1; }
+.comparison-entry h2 { font-size:24px; }
+.comparison-entry p:not(.eyebrow) { color:#4e6575; max-width:670px; margin:10px 0 0; }
+.comparison-entry .primary { flex-shrink:0; text-decoration:none; font-size:14px; padding:13px 20px; }
+@media(max-width:800px) { .comparison-entry { align-items:flex-start; flex-direction:column; gap:18px; } .comparison-entry .primary { width:100%; } }

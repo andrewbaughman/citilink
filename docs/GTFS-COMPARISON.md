@@ -1,6 +1,9 @@
 # GTFS schedule comparison
 
-Open **GTFS comparison** in the analytics dashboard. Choose a capture date,
+On the dashboard overview, use the prominent **Schedule vs. predictions** card
+and click **Compare departure times**. The **Schedule vs. predictions** tab
+opens the same screen. Bookmark the dashboard URL with `#comparison` to open it
+directly. Choose a capture date,
 GTFS service date, route and stop. The service date is explicit: late-night API
 responses can describe tomorrow’s departures. History must already be imported.
 This screen does not fetch the upstream API, start imports, or change schedules.
