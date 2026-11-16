@@ -69,3 +69,46 @@ test('compiled Worker runs against real local SQLite Durable Object and R2 bindi
  assert.equal((await mf.dispatchFetch('https://collector.test/api/archive?key='+encodeURIComponent(status.last_manifest))).status,401);
  assert.equal((await mf.dispatchFetch('https://collector.test/tick',{method:'POST',headers:auth})).status,405);
 });
+
+// Exercise both feeds on every run, independently of collector scheduling and wall-clock dates.
+test('bundled realtime HTTP handlers encode alerts and vehicles in the Workers runtime',async t=>{
+ const {build}=await import('esbuild');
+ const now=Date.UTC(2026,10,16,15);
+ const compiled=await build({
+  stdin:{contents:`import {realtimeResponse} from './src/realtime/http';
+   export default {fetch(request,env){return realtimeResponse(request,env.ARCHIVE,env.SOURCE_STATUS,${now});}};`,resolveDir:process.cwd()},
+  bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',
+ });
+ const source=(key)=>({enabled:true,last_object:key,last_observed_at:now});
+ const mf=new Miniflare(convertV4MiniflareOptions({
+  name:'realtime-regression',modules:true,script:compiled.outputFiles[0].text,compatibilityDate:'2026-10-01',r2Buckets:['ARCHIVE'],
+  bindings:{SOURCE_STATUS:{datasets:{full_topology:source('topology'),vehicles:source('vehicles'),service_messages:source('messages')}}},
+  outboundService:()=>{throw Error('Feed handlers must not access the network');},
+ }));
+ t.after(()=>mf.dispose());
+ const bucket=await mf.getR2Bucket('ARCHIVE');
+ const raw=(name)=>readFileSync(new URL('../api-discovery/raw/'+name+'.json',import.meta.url),'utf8');
+ await bucket.put('topology',raw('topo'));
+ await bucket.put('vehicles',raw('topo_vehicules'));
+ const messages=JSON.parse(raw('iv_message'));
+ // Cover varying string byte lengths, including multibyte text and strings > protobuf's buffer threshold.
+ const unicode='Citilink – détour 🚌 '.repeat(50);
+ messages.push({ligne:[],message:unicode});
+ await bucket.put('messages',JSON.stringify(messages));
+ for(const path of ['vehicle-positions','service-alerts']) {
+  const response=await mf.dispatchFetch('https://feeds.test/gtfs-rt/'+path+'.pb');
+  assert.equal(response.status,200,await response.clone().text());
+  assert.equal(response.headers.get('content-type'),'application/x-protobuf');
+  const feed=bindings.transit_realtime.FeedMessage.decode(new Uint8Array(await response.arrayBuffer()));
+  assert(feed.entity.length>0);assert.equal(Number(feed.header.timestamp),now/1000);
+  if(path==='service-alerts') {
+   const texts=feed.entity.map(e=>e.alert.headerText.translation[0].text);
+   assert(texts.includes('Route 4P diverted. Stop Broyles W corner will not be served.'));
+   assert(texts.includes(unicode.trim()));
+  }
+ }
+ await bucket.put('messages','[]');
+ const empty=await mf.dispatchFetch('https://feeds.test/gtfs-rt/service-alerts.pb');
+ assert.equal(empty.status,200);
+ assert.equal(bindings.transit_realtime.FeedMessage.decode(new Uint8Array(await empty.arrayBuffer())).entity.length,0);
+});

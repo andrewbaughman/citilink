@@ -1,4 +1,5 @@
 import bindings from 'gtfs-realtime-bindings';
+import protobuf from 'protobufjs/minimal';
 import reference from './static.json';
 import {array, record, num, str} from '../analytics/normalize';
 import {sha256} from '../archive';
@@ -81,5 +82,7 @@ export async function alertFeed(snapshot:Snapshot,routes:Map<number,string>):Pro
 }
 export function encode(message:bindings.transit_realtime.IFeedMessage):Uint8Array {
   const error=rt.FeedMessage.verify(message);if(error)throw Error('Invalid GTFS Realtime: '+error);
-  return rt.FeedMessage.encode(rt.FeedMessage.create(message)).finish();
+  // Use the Uint8Array writer explicitly. BufferWriter uses Node buffer internals
+  // whose utf8Write length semantics differ in the Workers runtime.
+  return rt.FeedMessage.encode(rt.FeedMessage.create(message),new protobuf.Writer()).finish();
 }
