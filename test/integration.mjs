@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import bindings from 'gtfs-realtime-bindings';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Miniflare, convertV4MiniflareOptions, Response as MFResponse } from 'miniflare';
@@ -23,6 +24,7 @@ test('compiled Worker runs against real local SQLite Durable Object and R2 bindi
   },
  }));
  t.after(()=>mf.dispose());
+ assert.equal((await mf.dispatchFetch('https://collector.test/gtfs-rt/vehicle-positions.pb')).status,503);
  const before=await mf.dispatchFetch('https://collector.test/healthz');assert.equal(before.status,503);
  assert.equal((await mf.dispatchFetch('https://collector.test/')).status,401);
  const ns=await mf.getDurableObjectNamespace('COORDINATOR');
@@ -41,6 +43,23 @@ test('compiled Worker runs against real local SQLite Durable Object and R2 bindi
   const source=readFileSync(new URL('../api-discovery/raw/'+files[new URL(a.url).pathname.split('/restWS')[1]],import.meta.url));
   assert.deepEqual(Buffer.from(await response.arrayBuffer()),source);
  }
+ const feedCalls=upstreamCalls.length;
+ for(const path of ['vehicle-positions','service-alerts']) {
+  const response=await mf.dispatchFetch('https://collector.test/gtfs-rt/'+path+'.pb');
+  const source=status.datasets[path==='vehicle-positions'?'vehicles':'service_messages'];
+  // Message collection is due only in its configured five-minute phase.
+  if(!source.last_observed_at){assert.equal(response.status,503);continue;}
+  assert.equal(response.status,200,await response.clone().text());
+  assert.equal(response.headers.get('content-type'),'application/x-protobuf');
+  const feed=bindings.transit_realtime.FeedMessage.decode(new Uint8Array(await response.arrayBuffer()));
+  assert.equal(feed.header.gtfsRealtimeVersion,'2.0');assert.equal(feed.header.incrementality,0);
+  assert.equal(Number(feed.header.timestamp),Math.floor(source.last_observed_at/1000));
+  const head=await mf.dispatchFetch('https://collector.test/gtfs-rt/'+path+'.pb',{method:'HEAD'});
+  assert.equal(head.status,200);assert.equal((await head.arrayBuffer()).byteLength,0);
+ }
+ const publicStatus=await (await mf.dispatchFetch('https://collector.test/gtfs-rt/status.json')).json();
+ assert.equal(publicStatus.trip_updates.supported,false);assert(!JSON.stringify(publicStatus).includes('last_object'));
+ assert.equal(upstreamCalls.length,feedCalls,'Public feeds must not poll Citilink');
  const count=upstreamCalls.length;assert.equal((await coordinator.tick(slot)).status,'duplicate');assert.equal(upstreamCalls.length,count);
  const health=await mf.dispatchFetch('https://collector.test/healthz');assert.equal(health.status,status.healthy?200:503);
  const minimal=await health.json();assert(!('roster' in minimal));assert(!('last_manifest' in minimal));

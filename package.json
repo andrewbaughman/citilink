@@ -33,6 +33,7 @@
     "wrangler": "4.156.0"
   },
   "dependencies": {
+    "gtfs-realtime-bindings": "1.1.1",
     "node-sql-parser": "5.4.0"
   }
 }

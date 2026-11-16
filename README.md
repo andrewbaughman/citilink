@@ -114,3 +114,7 @@ The separate analytics Worker provides dashboard-controlled backfills and daily 
 an open read-only SQL editor, a field dictionary, and CSV export. Daily imports default
 to disabled. See [dashboard documentation](docs/ANALYTICS-DASHBOARD.md) and
 [importer documentation](docs/ANALYTICS-IMPORTER.md) for setup and controls.
+
+## GTFS Realtime
+
+The collector includes public protobuf VehiclePositions and Service Alerts endpoints under `/gtfs-rt/`, backed by its existing archived captures. See [feed semantics, static GTFS compatibility, validation, and deployment](docs/GTFS-REALTIME.md). Trip Updates remain unsupported until trip identities can be validated.
