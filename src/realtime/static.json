@@ -1,0 +1,39 @@
+{
+  "sha256": "39fc7130d1dbf26ac091cc5639711a60fb1faed4e357abef01a722311cb244de",
+  "source_url": "https://fwcitilink.com/wp-content/uploads/2026/03/Official_GTFS_-_March_2__2026-2026-03-03-18-19-43-gtfs.zip",
+  "agency_id": "50044",
+  "timezone": "America/Indiana/Indianapolis",
+  "info": {
+    "feed_publisher_name": "Citilink",
+    "feed_publisher_url": "https://www.fwcitilink.com/",
+    "feed_lang": "en",
+    "feed_contact_url": "",
+    "feed_contact_email": "support@fwcitilink.com",
+    "feed_start_date": "20260302",
+    "feed_end_date": "20261231",
+    "feed_version": "Updated: Mar 3, 2026, 10:19 AM"
+  },
+  "routes": {
+    "1N": "11",
+    "8GN": "81",
+    "4P": "42",
+    "2TC": "22",
+    "1SS": "12A",
+    "2G": "2E",
+    "4WL": "41",
+    "1W": "12",
+    "15PM": "15",
+    "10NH": "10",
+    "21GC": "211",
+    "7A": "7A",
+    "8C": "82",
+    "1ARC": "11A",
+    "9BT": "92",
+    "6FP": "61",
+    "3VW": "32",
+    "6S": "62",
+    "3C": "31",
+    "9SF": "91",
+    "22JL": "221"
+  }
+}

@@ -3,6 +3,7 @@ import rawPlan from '../capture-plan.json';
 import { Engine } from './collector';
 import { COLLECTOR_SLOT_MS } from './plan';
 import { dashboard } from './dashboard';
+import {isRealtimePath, realtimeResponse} from './realtime/http';
 export interface Env {
   COORDINATOR: DurableObjectNamespace<Collector>;
   ARCHIVE: R2Bucket;
@@ -55,6 +56,10 @@ export default {
     const url=new URL(request.url);
     if(request.method!=='GET' && request.method!=='HEAD') return json({error:'method_not_allowed'},405);
     try {
+      if(isRealtimePath(url.pathname)) {
+        const response=await realtimeResponse(request,env.ARCHIVE,JSON.parse(await stub(env).status()));
+        return request.method==='HEAD'?new Response(null,response):response;
+      }
       if(url.pathname==='/healthz') {
         if(env.HEALTH_TOKEN && !await authenticate(request,env.HEALTH_TOKEN)) return json({error:'unauthorized'},401);
         const status=JSON.parse(await stub(env).status()) as Awaited<ReturnType<Engine['status']>>;

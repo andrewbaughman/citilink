@@ -7,7 +7,7 @@ export interface IO { now(): number; sleep(ms: number): Promise<void>; fetch(url
 export const liveIO: IO = { now: Date.now, sleep: ms => new Promise(resolve => setTimeout(resolve,ms)), fetch: (url,init) => fetch(url,init) };
 interface Stats {
   enabled: boolean; first_due: number; last_due?: number; last_success_slot?: number; last_archived_at?: number;
-  failures: number; successes: number; incident: boolean; last_error?: string; last_object?: string;
+  failures: number; successes: number; incident: boolean; last_error?: string; last_object?: string; last_observed_at?: number;
   coverage?: number; observations: number; last_hash?: string; unchanged_since?: number;
 }
 export interface Attempt {
@@ -172,6 +172,7 @@ export class Engine {
               outcome.succeeded++; success = true;
               const stats = this.state.datasets[id];
               stats.last_object = result.object_key;
+              stats.last_observed_at = result.requested_at;
               if (stats.last_hash !== result.body_sha256) stats.unchanged_since = result.requested_at;
               stats.last_hash = result.body_sha256;
               stats.observations++;
