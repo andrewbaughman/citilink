@@ -243,7 +243,9 @@ test('GTFS comparison uses historical references, retains flags, and dashboard c
   const context=createContext({document,console,Intl,Date,URLSearchParams,Blob,location:{assign:()=>assert.fail('unexpected login')},URL:{createObjectURL:blob=>{downloaded=blob;return 'blob:test';},revokeObjectURL:()=>{}},setTimeout,setInterval:()=>1,fetch:(path,options={})=>mf.dispatchFetch('https://analytics.test'+path,{...options,headers:{...options.headers,...headers}})});
   for(const file of ['dashboard','comparison'])new Script(await (await mf.dispatchFetch('https://analytics.test/assets/'+file+'.js')).text()).runInContext(context);
   async function until(predicate){for(let i=0;i<100;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}assert.fail('Comparison UI failed: '+$('comparison-message').textContent);}
-  $('comparison-date').value='2026-11-16';document.querySelector('[data-view="comparison"]').click();await until(()=>$('comparison-stop').children.length===1);
+  assert.equal($('open-comparison').closest('section#overview')!==null,true);
+  assert.equal(document.querySelector('[data-view="comparison"]').textContent,'Schedule vs. predictions');
+  $('comparison-date').value='2026-11-16';$('open-comparison').click();await until(()=>$('comparison-stop').children.length===1);
   assert.equal($('comparison').hidden,false);assert.equal($('visits').hidden,true);
   $('comparison-form').dispatchEvent(new window.Event('submit',{cancelable:true}));await until(()=>$('comparison-table').querySelectorAll('tbody tr').length===1);
   assert($('comparison-table').textContent.includes('Estimated'));assert($('comparison-chart').querySelectorAll('circle').length>0);assert($('comparison-feed').textContent.includes('Sep 1'));
@@ -251,5 +253,9 @@ test('GTFS comparison uses historical references, retains flags, and dashboard c
   $('comparison-export').click();assert((await downloaded.text()).includes('schedule_difference_seconds'));assert((await downloaded.text()).includes('8307976'));
   $('comparison-service-date').value='2026-11-17';$('comparison-service-date').dispatchEvent(new window.Event('change'));assert.equal($('comparison-result').hidden,true);
   document.querySelector('[data-view="overview"]').click();assert.equal($('comparison').hidden,true);
+  context.location.hash='#comparison';
+  new Script(await (await mf.dispatchFetch('https://analytics.test/assets/comparison.js')).text()).runInContext(context);
+  assert.equal($('comparison').hidden,false,'Direct comparison URL opens its view');
+  await until(()=>$('comparison-load').disabled===false);
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM analysis_predictions').first()).n,3);
 });

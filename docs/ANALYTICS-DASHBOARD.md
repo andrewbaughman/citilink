@@ -122,7 +122,7 @@ The current live URL and completed setup are recorded in
 
 ## GTFS comparison
 
-The **GTFS comparison** tab compares imported API predictions and API scheduled
+The overview’s **Compare departure times** button and the **Schedule vs. predictions** tab compares imported API predictions and API scheduled
 times with the versioned static GTFS feed. It includes explicit service dates,
 estimated/exact timepoint labels, prediction revision charts, unmatched/flagged
 entries and all-capture CSV export. These are schedule differences, not measured
