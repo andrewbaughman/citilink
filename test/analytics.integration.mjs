@@ -241,8 +241,11 @@ test('GTFS comparison uses historical references, retains flags, and dashboard c
   for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{get(){return Array.from(this.querySelectorAll('option')).find(o=>o.hasAttribute('selected'))?.value??this.querySelector('option')?.value??'';},set(value){for(const o of this.querySelectorAll('option'))o.toggleAttribute('selected',o.value===value);}});
   let downloaded;
   const context=createContext({document,console,Intl,Date,URLSearchParams,Blob,location:{assign:()=>assert.fail('unexpected login')},URL:{createObjectURL:blob=>{downloaded=blob;return 'blob:test';},revokeObjectURL:()=>{}},setTimeout,setInterval:()=>1,fetch:(path,options={})=>mf.dispatchFetch('https://analytics.test'+path,{...options,headers:{...options.headers,...headers}})});
-  for(const file of ['dashboard','comparison'])new Script(await (await mf.dispatchFetch('https://analytics.test/assets/'+file+'.js')).text()).runInContext(context);
+  for(const file of ['dashboard','gps','comparison'])new Script(await (await mf.dispatchFetch('https://analytics.test/assets/'+file+'.js')).text()).runInContext(context);
   async function until(predicate){for(let i=0;i<100;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}assert.fail('Comparison UI failed: '+$('comparison-message').textContent);}
+  assert.equal((await mf.dispatchFetch('https://analytics.test/api/analysis/gps-frequency?date=2026-11-16',{headers})).status,200);
+  assert.equal((await mf.dispatchFetch('https://analytics.test/api/analysis/gps-frequency?date=2026-11-16')).status,401);
+  assert.equal($('gps-form')!==null,true,'Existing live GPS feature is retained');
   assert.equal($('open-comparison').closest('section#overview')!==null,true);
   assert.equal(document.querySelector('[data-view="comparison"]').textContent,'Schedule vs. predictions');
   $('comparison-date').value='2026-11-16';$('open-comparison').click();await until(()=>$('comparison-stop').children.length===1);

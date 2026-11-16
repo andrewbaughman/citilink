@@ -4,6 +4,8 @@ import {authenticate,bodyText,tokenMatches,sessionCookie,clearCookie,type AuthEn
 import {query,csv,PREVIEW_LIMIT,EXPORT_LIMIT} from './queries';
 import {schema,starter,STARTERS} from './catalog';
 import {visitOptions,investigate,annotate} from './visits';
+import {gpsFrequency} from './gps';
+import gpsJs from './ui/gps.js.txt';
 import visitsJs from './ui/visits.js.txt';
 import comparisonJs from './ui/comparison.js.txt';
 import {comparison} from './comparison';
@@ -97,6 +99,7 @@ export default {
     if(request.method==='GET' && url.pathname==='/assets/dashboard.js')return new Response(dashboardJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(request.method==='GET' && url.pathname==='/assets/visits.js')return new Response(visitsJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(request.method==='GET' && url.pathname==='/assets/comparison.js')return new Response(comparisonJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
+    if(request.method==='GET' && url.pathname==='/assets/gps.js')return new Response(gpsJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(!env.IMPORT_TOKEN || env.IMPORT_TOKEN.length<24)return response({error:'import_auth_not_configured'},503);
     if(url.pathname==='/login' && request.method==='POST') {
       if(request.headers.get('Origin')!==url.origin)return response({error:'origin_not_allowed'},403);
@@ -124,6 +127,9 @@ export default {
       if(url.pathname==='/api/analysis/schema' && request.method==='GET')return response({tables:await schema(env.DB),starters:STARTERS});
       if(url.pathname==='/api/comparison' && request.method==='GET') {
         try{return response(await comparison(env.DB,url.searchParams));}catch(error){return response({error:error instanceof Error?error.message:'Comparison failed'},400);}
+      }
+      if(url.pathname==='/api/analysis/gps-frequency' && request.method==='GET') {
+        try{return response(await gpsFrequency(env.DB,url.searchParams));}catch(error){return response({error:error instanceof Error?error.message:'GPS estimate unavailable'},400);}
       }
       if(url.pathname==='/api/visits/options' && request.method==='GET') {
         try{return response(await visitOptions(env.DB,url.searchParams.get('date')??undefined));}catch(error){return response({error:error instanceof Error?error.message:'Options unavailable'},400);}
