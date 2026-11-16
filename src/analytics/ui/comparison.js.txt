@@ -1,0 +1,100 @@
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const node = (tag, text) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; return n; };
+  const time = at => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Indiana/Indianapolis', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(at);
+  const clock = n => n == null ? '—' : `${String(Math.floor(n / 3600)).padStart(2, '0')}:${String(Math.floor(n / 60) % 60).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  const delta = n => n == null ? '—' : n === 0 ? '0s' : `${n > 0 ? '+' : '−'}${Math.floor(Math.abs(n) / 60)}m ${Math.abs(n) % 60}s`;
+  const key = r => JSON.stringify([r.stop_id, r.route_id, r.destination_key_raw ?? r.destination_raw, r.prediction_id ?? [r.observed_at, r.source_key]]);
+  let options, result, loaded = false, generation = 0, selected;
+  async function api(url) {
+    const response = await fetch(url);
+    if (response.status === 401) { location.assign('/?expired=1'); throw Error('Sign in again.'); }
+    const data = await response.json(); if (!response.ok) throw Error(data.error || 'Request failed'); return data;
+  }
+  const option = (value, text) => { const n = node('option', text); n.value = String(value); return n; };
+  function clearResult() { generation++; result = null; selected = null; $('comparison-result').hidden = true; $('comparison-load').disabled = !options?.stops.some(s => s.route_ids.includes(Number($('comparison-route').value))); }
+  function stops() {
+    const available = options.stops.filter(s => s.route_ids.includes(Number($('comparison-route').value)));
+    available.sort((a, b) => Number(options.prediction_stop_ids?.includes(b.stop_id)) - Number(options.prediction_stop_ids?.includes(a.stop_id)) || a.name.localeCompare(b.name));
+    $('comparison-stop').replaceChildren(...available.map(s => option(s.stop_id, s.name + (options.prediction_stop_ids?.includes(s.stop_id) ? ' · predictions collected' : ''))));
+    $('comparison-load').disabled = !available.length; clearResult();
+  }
+  async function loadOptions() {
+    const request = ++generation; $('comparison-load').disabled = true;
+    const data = await api('/api/visits/options' + ($('comparison-date').value ? '?date=' + $('comparison-date').value : ''));
+    if (request !== generation) return;
+    options = data;
+    if (data.date) $('comparison-date').value = data.date;
+    if (!$('comparison-service-date').value) $('comparison-service-date').value = data.date || '';
+    const old = $('comparison-route').value;
+    $('comparison-route').replaceChildren(...data.routes.map(r => option(r.route_id, `${r.short_code || ''} · ${r.name}`)));
+    const route = data.routes.find(r => String(r.route_id) === old) || data.routes.find(r => r.short_code === '8C');
+    if (route) $('comparison-route').value = String(route.route_id);
+    stops(); loaded = true; $('comparison-message').textContent = data.warning || 'Select a capture day, service date, route and stop.';
+  }
+  document.querySelector('[data-view="comparison"]').addEventListener('click', () => { if (!loaded) loadOptions().catch(e => { $('comparison-message').textContent = e.message; }); });
+  $('comparison-date').addEventListener('change', () => { clearResult(); $('comparison-service-date').value = $('comparison-date').value; loadOptions().catch(e => { $('comparison-message').textContent = e.message; }); });
+  $('comparison-service-date').addEventListener('change', clearResult);
+  $('comparison-route').addEventListener('change', stops);
+  $('comparison-stop').addEventListener('change', clearResult);
+  $('comparison-form').addEventListener('submit', async e => {
+    e.preventDefault(); clearResult(); const request = ++generation; $('comparison-load').disabled = true; $('comparison-message').textContent = 'Comparing imported observations…';
+    try {
+      const params = new URLSearchParams({ date: $('comparison-date').value, service_date: $('comparison-service-date').value, route_id: $('comparison-route').value, stop_id: $('comparison-stop').value });
+      const data = await api('/api/comparison?' + params); if (request !== generation) return;
+      result = data; $('comparison-result').hidden = false;
+      const f = data.feed;
+      $('comparison-feed').textContent = `${f.feed_version} · Service ${f.feed_start_date}–${f.feed_end_date} · ${f.timezone} · SHA-256 ${f.sha256}`;
+      $('comparison-method').textContent = data.disclaimer;
+      $('comparison-message').textContent = data.rows.length ? `${data.rows.length.toLocaleString()} captures of departure entries loaded. Capture day ${data.date}; GTFS service day ${data.service_date}.` : 'No imported predictions for these filters. Import the day’s history or select a stop with collected predictions.';
+      render();
+    } catch (error) { if (request === generation) $('comparison-message').textContent = error.message; }
+    finally { if (request === generation) $('comparison-load').disabled = false; }
+  });
+  function render() {
+    if (!result) return;
+    const latest = new Map(); result.rows.forEach(r => latest.set(key(r), r));
+    const entries = [...latest.values()], matched = entries.filter(r => r.match_status === 'schedule_candidate');
+    $('comparison-summary').textContent = `${entries.length} API entries · ${matched.length} provisional schedule candidates · ${entries.length - matched.length} unmatched/unresolved · ${entries.filter(r => r.status_flag).length} vendor-status flagged. Counts describe entries, not independent bus trips. No accuracy score is computed.`;
+    const rows = ($('comparison-all').checked ? result.rows : entries).slice().sort((a, b) => (a.scheduled_seconds_raw ?? 0) - (b.scheduled_seconds_raw ?? 0) || a.observed_at - b.observed_at);
+    const table = node('table'), head = node('thead'), header = node('tr'), body = node('tbody');
+    ['API entry / revisions', 'Captured', 'Destination', 'GTFS departure', 'API schedule', 'Prediction', 'Schedule − GTFS', 'Prediction − GTFS', 'Prediction − API schedule', 'GTFS timing', 'Association / status'].forEach(t => header.append(node('th', t))); head.append(header);
+    rows.slice(0, 500).forEach(r => {
+      const tr = node('tr'), cell = node('td'), button = node('button', String(r.prediction_id ?? 'Unknown ID')); button.type = 'button'; button.className = 'quiet'; button.addEventListener('click', () => select(key(r))); cell.append(button); tr.append(cell);
+      const values = [time(r.observed_at), r.destination_raw || '—', clock(r.gtfs_seconds), clock(r.scheduled_seconds_raw > 0 ? r.scheduled_seconds_raw : null), r.etat_passage === 2 ? 'Suppressed by vendor' : clock(r.predicted_seconds_raw), delta(r.schedule_difference_seconds), delta(r.prediction_difference_seconds), delta(r.api_adjustment_seconds), r.timepoint == null ? '—' : r.timepoint === '1' ? 'Exact timepoint' : r.timepoint === '0' ? 'Estimated' : 'Unspecified', r.match_status.replaceAll('_', ' ') + ` · status ${r.etat_horaire}/${r.etat_passage}` + (r.status_flag ? ' · flagged' : '')];
+      values.forEach(v => tr.append(node('td', v))); body.append(tr);
+    }); table.append(head, body); $('comparison-table').replaceChildren(table);
+    if (!selected || !entries.some(r => key(r) === selected)) selected = entries.length ? key(entries[0]) : null;
+    if (rows.length > 500) $('comparison-summary').textContent += ` Table preview capped at 500 of ${rows.length} rows; CSV includes all ${result.rows.length} captures.`;
+    select(selected);
+  }
+  function svg(parent, tag, attrs, text) { const n = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, String(v))); if (text !== undefined) n.textContent = text; parent.append(n); return n; }
+  function select(value) {
+    selected = value; const chart = $('comparison-chart'); chart.replaceChildren();
+    const rows = result.rows.filter(r => key(r) === value), last = rows.at(-1);
+    $('comparison-selection').textContent = last ? `Entry ${last.prediction_id} · ${last.destination_raw} · ${rows.length} recorded observations. ${last.gtfs_trip_id ? 'Candidate GTFS trip: ' + last.gtfs_trip_id : 'GTFS association unresolved.'}` : 'No entries to chart.';
+    if (!rows.length) return;
+    const channels = [{ field: 'predicted_seconds_raw', color: '#145bce', name: 'Prediction' }, { field: 'scheduled_seconds_raw', color: '#687887', name: 'API schedule' }, { field: 'gtfs_seconds', color: '#b76810', name: 'GTFS' }];
+    const valid = (r, field) => r[field] != null && (field !== 'scheduled_seconds_raw' || r[field] > 0) && (field !== 'predicted_seconds_raw' || r.etat_passage !== 2);
+    const values = rows.flatMap(r => channels.filter(c => valid(r, c.field)).map(c => r[c.field])); if (!values.length) return;
+    if (Math.max(...values) - Math.min(...values) > 43200) { svg(chart, 'text', { x: 40, y: 80 }, 'Clock crosses midnight or is unresolved. Inspect raw values in the table.'); return; }
+    const xmin = rows[0].observed_at, xmax = Math.max(xmin + 60000, rows.at(-1).observed_at), low = Math.min(...values) - 30, high = Math.max(...values) + 30;
+    const x = at => 95 + (at - xmin) / (xmax - xmin) * 630, y = n => 255 - (n - low) / (high - low) * 220;
+    for (let i = 0; i <= 4; i++) { const v = Math.round(low + (high - low) * i / 4); svg(chart, 'line', { x1: 95, x2: 725, y1: y(v), y2: y(v), stroke: '#e3e8ed' }); svg(chart, 'text', { x: 6, y: y(v) + 4, 'font-size': 12 }, clock(v)); }
+    [xmin, (xmin + xmax) / 2, xmax].forEach(at => svg(chart, 'text', { x: x(at), y: 285, 'text-anchor': 'middle', 'font-size': 11 }, time(at)));
+    channels.slice().reverse().forEach(c => rows.forEach((r, i) => {
+      if (!valid(r, c.field)) return; const prev = rows[i - 1];
+      if (prev && valid(prev, c.field) && r.observed_at - prev.observed_at <= 300000) svg(chart, 'line', { x1: x(prev.observed_at), x2: x(r.observed_at), y1: y(prev[c.field]), y2: y(r[c.field]), stroke: c.color, 'stroke-width': 2, ...(c.field === 'scheduled_seconds_raw' ? { 'stroke-dasharray': '5 4' } : {}) });
+      const dot = svg(chart, 'circle', { cx: x(r.observed_at), cy: y(r[c.field]), r: 2.5, fill: c.color }); svg(dot, 'title', {}, `${c.name}: ${clock(r[c.field])}, captured ${time(r.observed_at)}`);
+    }));
+  }
+  $('comparison-all').addEventListener('change', render);
+  $('comparison-export').addEventListener('click', () => {
+    if (!result) return;
+    const columns = ['feed_sha256', 'feed_version', 'capture_date', 'service_date', 'observed_at', 'stop_code', 'route_code', 'destination_raw', 'prediction_id', 'gtfs_trip_id', 'gtfs_seconds', 'scheduled_seconds_raw', 'predicted_seconds_raw', 'schedule_difference_seconds', 'prediction_difference_seconds', 'api_adjustment_seconds', 'timepoint', 'match_status', 'etat_horaire', 'etat_passage', 'status_flag', 'source_key'];
+    const cell = v => { let s = v == null ? '' : String(v); if (typeof v === 'string' && /^[\s]*[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replaceAll('"', '""') + '"'; };
+    const text = '\uFEFF' + [columns.join(','), ...result.rows.map(r => columns.map(k => cell(({ feed_sha256: result.feed.sha256, feed_version: result.feed.feed_version, capture_date: result.date, ...r })[k])).join(','))].join('\r\n') + '\r\n';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' })), link = node('a'); link.href = url; link.download = `citilink-gtfs-comparison-${result.date}.csv`; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+})();
