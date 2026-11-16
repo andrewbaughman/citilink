@@ -220,3 +220,36 @@ test('stop visits investigate real bindings, draw evidence, and persist owner re
   $('visit-note').value='Saved through the investigation screen.';$('visit-notes').dispatchEvent(new window.Event('submit',{cancelable:true}));await until(()=>$('visit-note-status').textContent==='Review saved.');
   assert.equal((await db.prepare('SELECT note FROM visit_annotations WHERE visit_id=?').bind(visit.id).first()).note,'Saved through the investigation screen.');
 });
+test('GTFS comparison uses historical references, retains flags, and dashboard charts and exports captures',async t=>{
+  const {mf,db,bucket,repo}=await rig(t),at=Date.parse('2026-11-16T16:00:00Z');
+  const topology={topo:[{ligne:[{idLigne:13863,mnemo:'8C',nomCommercial:'Calhoun'}],pointArret:[{idPointArret:277210,stopCode:'1174',nomCommercial:'Hawthorne',localisation:{lat:41.0332,lng:-85.1366},infoLigneSwiv:[{idLigne:13863}]}]}]};
+  const manifest=await seed(bucket,[]);await repo.manifest(manifest);
+  const top='raw/v1/full_topology/gtfs.json';await bucket.put(top,JSON.stringify(topology));await repo.attempt(manifest,{...attempt(top,'full_topology'),scheduled_at:at-60000,requested_at:at-60000,completed_at:at-59900});
+  for(let i=0;i<3;i++){
+    const key=`raw/v1/stop_predictions/gtfs-${i}.json`;
+    await bucket.put(key,JSON.stringify({listeHoraires:[{idLigne:13863,destination:[{libelle:'Central Station - Bay A',libelleHexa:'x',horaires:[{idHoraire:8307976,horaire:40609-i*10,horaireApplicable:40748,etatHoraire:1,etatPassage:i===2?1:0}]}]}]}));
+    await repo.attempt(manifest,{...attempt(key,'stop_predictions','gtfs'+i),stop_id:277210,scheduled_at:at+i*120000,requested_at:at+i*120000,completed_at:at+i*120000+100});
+  }
+  // A future topology must never change the route/stop match for older captures.
+  const future='raw/v1/full_topology/future.json';await bucket.put(future,JSON.stringify({topo:[{ligne:[{idLigne:13863,mnemo:'WRONG'}],pointArret:[]}]}));await repo.attempt(manifest,{...attempt(future,'full_topology','future'),scheduled_at:at+86400000,requested_at:at+86400000,completed_at:at+86400100});
+  const path='/api/comparison?date=2026-11-16&service_date=2026-11-16&route_id=13863&stop_id=277210';
+  assert.equal((await mf.dispatchFetch('https://analytics.test'+path)).status,401);
+  const response=await mf.dispatchFetch('https://analytics.test'+path,{headers});assert.equal(response.status,200,await response.clone().text());
+  const result=await response.json();assert.equal(result.rows.length,3);assert.equal(result.rows[0].gtfs_seconds,40740);assert.equal(result.rows[0].schedule_difference_seconds,8);assert.equal(result.rows[0].prediction_difference_seconds,-131);assert.equal(result.rows[2].status_flag,true);assert.equal(result.feed.feed_end_date,'20261231');
+  assert.equal((await mf.dispatchFetch('https://analytics.test/api/comparison?date=no',{headers})).status,400);
+  const {document,window}=parseHTML(await (await mf.dispatchFetch('https://analytics.test/',{headers})).text()),$=id=>document.getElementById(id);
+  for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{get(){return Array.from(this.querySelectorAll('option')).find(o=>o.hasAttribute('selected'))?.value??this.querySelector('option')?.value??'';},set(value){for(const o of this.querySelectorAll('option'))o.toggleAttribute('selected',o.value===value);}});
+  let downloaded;
+  const context=createContext({document,console,Intl,Date,URLSearchParams,Blob,location:{assign:()=>assert.fail('unexpected login')},URL:{createObjectURL:blob=>{downloaded=blob;return 'blob:test';},revokeObjectURL:()=>{}},setTimeout,setInterval:()=>1,fetch:(path,options={})=>mf.dispatchFetch('https://analytics.test'+path,{...options,headers:{...options.headers,...headers}})});
+  for(const file of ['dashboard','comparison'])new Script(await (await mf.dispatchFetch('https://analytics.test/assets/'+file+'.js')).text()).runInContext(context);
+  async function until(predicate){for(let i=0;i<100;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}assert.fail('Comparison UI failed: '+$('comparison-message').textContent);}
+  $('comparison-date').value='2026-11-16';document.querySelector('[data-view="comparison"]').click();await until(()=>$('comparison-stop').children.length===1);
+  assert.equal($('comparison').hidden,false);assert.equal($('visits').hidden,true);
+  $('comparison-form').dispatchEvent(new window.Event('submit',{cancelable:true}));await until(()=>$('comparison-table').querySelectorAll('tbody tr').length===1);
+  assert($('comparison-table').textContent.includes('Estimated'));assert($('comparison-chart').querySelectorAll('circle').length>0);assert($('comparison-feed').textContent.includes('Sep 1'));
+  $('comparison-all').checked=true;$('comparison-all').dispatchEvent(new window.Event('change'));assert.equal($('comparison-table').querySelectorAll('tbody tr').length,3);
+  $('comparison-export').click();assert((await downloaded.text()).includes('schedule_difference_seconds'));assert((await downloaded.text()).includes('8307976'));
+  $('comparison-service-date').value='2026-11-17';$('comparison-service-date').dispatchEvent(new window.Event('change'));assert.equal($('comparison-result').hidden,true);
+  document.querySelector('[data-view="overview"]').click();assert.equal($('comparison').hidden,true);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM analysis_predictions').first()).n,3);
+});

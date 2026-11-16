@@ -119,3 +119,12 @@ layout or native browser download behavior.
 
 The current live URL and completed setup are recorded in
 [ANALYTICS-DEPLOYMENT.md](ANALYTICS-DEPLOYMENT.md).
+
+## GTFS comparison
+
+The **GTFS comparison** tab compares imported API predictions and API scheduled
+times with the versioned static GTFS feed. It includes explicit service dates,
+estimated/exact timepoint labels, prediction revision charts, unmatched/flagged
+entries and all-capture CSV export. These are schedule differences, not measured
+accuracy. See [GTFS-COMPARISON.md](GTFS-COMPARISON.md) for matching, limits and feed
+refresh instructions.

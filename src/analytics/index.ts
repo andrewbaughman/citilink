@@ -5,6 +5,8 @@ import {query,csv,PREVIEW_LIMIT,EXPORT_LIMIT} from './queries';
 import {schema,starter,STARTERS} from './catalog';
 import {visitOptions,investigate,annotate} from './visits';
 import visitsJs from './ui/visits.js.txt';
+import comparisonJs from './ui/comparison.js.txt';
+import {comparison} from './comparison';
 import dashboard from './ui/dashboard.html';
 import dashboardCss from './ui/dashboard.css';
 import dashboardJs from './ui/dashboard.js.txt';
@@ -94,6 +96,7 @@ export default {
     if(request.method==='GET' && url.pathname==='/assets/dashboard.css')return new Response(dashboardCss,{headers:{'Content-Type':'text/css;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(request.method==='GET' && url.pathname==='/assets/dashboard.js')return new Response(dashboardJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(request.method==='GET' && url.pathname==='/assets/visits.js')return new Response(visitsJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
+    if(request.method==='GET' && url.pathname==='/assets/comparison.js')return new Response(comparisonJs,{headers:{'Content-Type':'application/javascript;charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'}});
     if(!env.IMPORT_TOKEN || env.IMPORT_TOKEN.length<24)return response({error:'import_auth_not_configured'},503);
     if(url.pathname==='/login' && request.method==='POST') {
       if(request.headers.get('Origin')!==url.origin)return response({error:'origin_not_allowed'},403);
@@ -119,6 +122,9 @@ export default {
         return response(await importer.settings(settings));
       }
       if(url.pathname==='/api/analysis/schema' && request.method==='GET')return response({tables:await schema(env.DB),starters:STARTERS});
+      if(url.pathname==='/api/comparison' && request.method==='GET') {
+        try{return response(await comparison(env.DB,url.searchParams));}catch(error){return response({error:error instanceof Error?error.message:'Comparison failed'},400);}
+      }
       if(url.pathname==='/api/visits/options' && request.method==='GET') {
         try{return response(await visitOptions(env.DB,url.searchParams.get('date')??undefined));}catch(error){return response({error:error instanceof Error?error.message:'Options unavailable'},400);}
       }

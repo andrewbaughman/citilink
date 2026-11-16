@@ -18,6 +18,7 @@
   function setView(next) {
     view = next; $('overview').hidden = next !== 'overview'; $('workspace').hidden = !['explore','sql'].includes(next); $('explore-filters').hidden = next === 'sql';
     $('visits').hidden = next !== 'visits';
+    $('comparison').hidden = next !== 'comparison';
     document.querySelectorAll('[data-view]').forEach(button => button.setAttribute('aria-selected', String(button.dataset.view === next)));
   }
   function queryChanged() { $('export-csv').disabled = busy || !lastQuery || $('sql-input').value !== lastQuery; }
