@@ -1,0 +1,60 @@
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const count = n => Number(n).toLocaleString('en-US');
+  const duration = n => n == null ? 'Not enough data' : n < 120 ? Number(n.toFixed(1)) + ' sec' : Number((n / 60).toFixed(1)) + ' min';
+  const percent = n => n == null ? '—' : Number(n.toFixed(1)) + '%';
+  const labels = { insufficient: 'More evidence needed', faster_helpful: 'Faster polling may help', no_clear_need: 'No clear need for faster polling' };
+  let busy = false;
+  function invalidate() {
+    $('gps-results').hidden = true;
+    $('gps-error').hidden = true;
+    $('gps-status').textContent = 'Filters changed. Estimate again to see matching results.';
+  }
+  for (const id of ['gps-date', 'gps-route', 'gps-vehicle']) $(id).addEventListener('input', invalidate);
+  $('gps-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (busy) return;
+    busy = true;
+    const inputs = ['gps-date', 'gps-route', 'gps-vehicle'];
+    const params = new URLSearchParams({ date: $('gps-date').value, route_id: $('gps-route').value, vehicle_id: $('gps-vehicle').value });
+    $('gps-run').disabled = true; $('gps-run').textContent = 'Estimating…';
+    inputs.forEach(id => { $(id).disabled = true; });
+    $('gps-results').hidden = true; $('gps-error').hidden = true;
+    $('gps-status').textContent = 'Comparing positions in imported history…';
+    try {
+      const response = await fetch('/api/analysis/gps-frequency?' + params);
+      if (response.status === 401) { location.assign('/?expired=1'); throw Error('Your session expired. Sign in again.'); }
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || 'GPS estimate unavailable');
+      $('gps-date').value = result.date;
+      $('gps-poll').textContent = duration(result.poll_seconds);
+      $('gps-change').textContent = duration(result.change_seconds);
+      $('gps-percent').textContent = percent(result.change_percent);
+      $('gps-pairs').textContent = count(result.pairs);
+      $('gps-sample').textContent = count(result.changes) + ' detected position changes';
+      $('gps-verdict').textContent = labels[result.recommendation];
+      $('gps-note').textContent = result.note;
+      $('gps-recommendation').dataset.recommendation = result.recommendation;
+      $('gps-method').textContent = result.method + ' Long gaps exceed ' + duration(result.gap_limit_seconds) + '. ' + count(result.excluded_pairs) + ' pairs excluded.';
+      const rows = result.vehicles.map(vehicle => {
+        const row = document.createElement('tr');
+        for (const value of [vehicle.vehicle_id, count(vehicle.observations), count(vehicle.pairs), count(vehicle.changes), percent(vehicle.change_percent), duration(vehicle.change_seconds)]) {
+          const cell = document.createElement('td'); cell.textContent = String(value); row.append(cell);
+        }
+        return row;
+      });
+      $('gps-vehicles').replaceChildren(...rows);
+      const clock = at => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Indiana/Indianapolis', hour: 'numeric', minute: '2-digit' }).format(at);
+      $('gps-status').textContent = result.observations ? `${result.date} · ${clock(result.first_at)}–${clock(result.last_at)} · ${count(result.observations)} records · ${count(result.vehicle_count)} ${result.vehicle_count === 1 ? 'bus' : 'buses'}${result.truncated ? ' · Partial sample: narrow your filters' : ''}` : 'No imported vehicle positions match this day and these filters. Import missing data or choose another day.';
+      $('gps-results').hidden = false;
+    } catch (error) {
+      $('gps-status').textContent = 'Estimate unavailable.';
+      $('gps-error').textContent = error.message; $('gps-error').hidden = false;
+    } finally {
+      busy = false; $('gps-run').disabled = false; $('gps-run').textContent = 'Estimate frequency →';
+      inputs.forEach(id => { $(id).disabled = false; });
+    }
+  });
+})();
+

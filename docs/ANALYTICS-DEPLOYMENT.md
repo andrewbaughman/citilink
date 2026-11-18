@@ -52,3 +52,33 @@ The collector and import settings were not changed, and no manual import or
 investigation was started during release. Signed-in production interaction still
 requires the owner's email-code login; no automated authenticated browser review
 was performed. The PR's 55 tests and GitHub checks passed before release.
+
+## GTFS comparison release — November 16, 2026
+
+Merged PRs #3 and #4 (`8ab2cec192bafcec36fb49db7a1ee8f131ca3975`)
+are deployed with the existing live GPS frequency feature preserved. The GPS
+feature was present in production version `c16ead3f-5c26-4f2b-b851-1cc6e2506438`
+but absent from main; its source was recovered from that version's source map
+and text modules, then integrated without changing its calculation or controls.
+Preservation source commit: `3d7a841`.
+
+Production version `6e2ea09e-7adc-48ce-ba02-123f08f93081` serves 100% of traffic,
+deployed at 11:46 a.m. Indianapolis time. Deployment ID:
+`8b5d889e-af70-4f61-8de5-23eeb2968270`.
+
+On Overview, click **Compare departure times** in **Schedule vs. predictions**,
+or open https://citilink-analytics.empty-mouse-f437.workers.dev/#comparison .
+
+Release checks passed all 47 unit and 12 integration tests, type checking,
+capture-plan validation and both Worker builds. A subsequent focused runtime/DOM
+check verified the comparison, overview entry, direct URL, and retained GPS
+endpoint and UI. Cloudflare readback verified the active version at 100%, the
+new comparison modules/endpoint and overview button, and the GPS feature. Existing
+DB, R2, Durable Object, Access variables and secret bindings were retained.
+
+External checks through the configured proxy verified that the dashboard,
+comparison JavaScript/API and GPS endpoint return 302 to the existing Cloudflare
+Access sign-in hostname. Signed-in production browser interaction was not
+performed. No imports or investigations were initiated; collector configuration,
+private history and import schedules were not changed. No schema migration was
+needed.
